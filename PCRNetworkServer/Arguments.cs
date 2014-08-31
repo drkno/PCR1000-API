@@ -9,11 +9,6 @@ namespace PCRNetworkServer
     {
         private static Dictionary<string, string> _args = new Dictionary<string, string>();
 
-        public static void ClearArguments()
-        {
-            _args = null;
-        }
-
         public static void LoadArguments(IEnumerable<string> args)
         {
             if (_args == null)
@@ -101,7 +96,11 @@ namespace PCRNetworkServer
         {
             var r = GetArgument(arg);
             bool t;
-            return !bool.TryParse(r, out t) && t;
+            if (!bool.TryParse(r, out t))
+            {
+                return false;
+            }
+            return t;
         }
     }
 }

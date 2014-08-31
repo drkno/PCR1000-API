@@ -32,16 +32,6 @@ namespace PCR1000
     public class PcrControl
     {
         /// <summary>
-        ///     Default COM port to listen on.
-        /// </summary>
-        private const string PcrDefaultPort = "COM1";
-
-        /// <summary>
-        ///     Default rate.
-        /// </summary>
-        private const int PcrDefaultSpeed = 9600;
-
-        /// <summary>
         ///     The currently active Primitive Communication Object.
         /// </summary>
         private IComm _pcrComm;
@@ -60,57 +50,6 @@ namespace PCR1000
         ///     The state of the PComm object (on or off).
         /// </summary>
         private bool _pcrStatus;
-
-        /*// <summary>
-        ///     Constructor. Initialises the class.
-        /// </summary>
-        /// <param name="port">COM Port to use.</param>
-        /// <param name="speed">COM Speed to use.</param>
-        public PcrControl(string port = PcrDefaultPort, int speed = PcrDefaultSpeed)
-        {
-            Debug.WriteLine("PcrControl Setup");
-            _pcrRadio = new PRadInf();
-            _pcrComm = new PcrComm(port, speed);
-
-            _pcrRadio.PcrPort = port;
-            _pcrRadio.PcrSpeed = speed;
-            _pcrRadio.PcrVolume = 0;
-            _pcrRadio.PcrSquelch = 0;
-            _pcrRadio.PcrFreq = 146000000;
-            _pcrRadio.PcrMode = PcrDef.PCRMODNFM;
-            _pcrRadio.PcrFilter = PcrDef.PCRFLTR15;
-            _pcrRadio.PcrToneSq = "";
-            _pcrRadio.PcrToneSqFloat = 0.0f;
-            _pcrRadio.PcrAutoGain = false;
-            _pcrRadio.PcrNoiseBlank = false;
-            _pcrRadio.PcrRfAttenuator = false;
-            _pcrRadio.PcrAutoUpdate = false;
-            _pcrStatus = false;
-        }
-
-        /// <summary>
-        ///     Constructor. Initialises the class.
-        /// </summary>
-        /// <param name="nethost">Internet server to use.</param>
-        /// <param name="netport">Internet port to use.</param>
-        public PcrControl(int netport, string nethost)
-        {
-            Debug.WriteLine("PcrControl NetSetup");
-            _pcrRadio = new PRadInf();
-            _pcrComm = new PcrNetworkClient(nethost, netport);
-            _pcrRadio.PcrVolume = 0;
-            _pcrRadio.PcrSquelch = 0;
-            _pcrRadio.PcrFreq = 146000000;
-            _pcrRadio.PcrMode = PcrDef.PCRMODNFM;
-            _pcrRadio.PcrFilter = PcrDef.PCRFLTR15;
-            _pcrRadio.PcrToneSq = "";
-            _pcrRadio.PcrToneSqFloat = 0.0f;
-            _pcrRadio.PcrAutoGain = false;
-            _pcrRadio.PcrNoiseBlank = false;
-            _pcrRadio.PcrRfAttenuator = false;
-            _pcrRadio.PcrAutoUpdate = false;
-            _pcrStatus = false;
-        }*/
 
         /// <summary>
         /// Instantiates a new PCR1000 controller

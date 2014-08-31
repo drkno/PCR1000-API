@@ -13,7 +13,9 @@
 
 using System;
 using System.Diagnostics;
+using System.IO;
 using System.Net;
+using System.Net.Security;
 using System.Net.Sockets;
 using System.Text;
 using System.Threading;
@@ -21,12 +23,12 @@ using System.Threading;
 namespace PCR1000
 {
     /// <summary>
-    /// 
+    /// Client to connect to a remote radio.
     /// </summary>
     public class PcrNetworkClient : IComm
     {
         private Thread _tcpListen;
-        private NetworkStream _tcpStream;
+        private Stream _tcpStream;
         private TcpClient _tcpClient;
         private byte[] _tcpBuffer;
         // ReSharper disable ConvertToConstant.Local
@@ -36,6 +38,7 @@ namespace PCR1000
         // ReSharper restore ConvertToConstant.Local
         private readonly string _server;
         private readonly int _port;
+        private readonly bool _ssl;
 
         /// <summary>
         /// Unnessercery characters potentially returned in each message.
@@ -84,25 +87,9 @@ namespace PCR1000
                     datarecv = datarecv.Substring(0, lData);
                     datarecv = datarecv.Trim(TrimChars);
                     if (datarecv.Length <= 0) continue;
-#if DEBUG
+                    #if DEBUG
                     Debug.WriteLineIf(!_debugLogger, "PcrNetwork Data Recv");
-#endif
-
-                    if (datarecv.StartsWith("<") && datarecv.EndsWith(">")) // server command
-                    {
-                        switch (datarecv.Substring(1,datarecv.Length-2))
-                        {
-                            case "authnow":
-                            {
-                                Send("<pwd=\"" + _password + "\">");
-#if DEBUG
-                                Debug.WriteLineIf(_debugLogger, _server + ":" + _port + " : Request for authentication -> " + datarecv);
-#endif
-                                continue;
-                            }
-                        }
-                    }
-
+                    #endif
                     if (AutoUpdate && DataReceived != null)
                     {
                         DataReceived(this, DateTime.Now, datarecv);
@@ -111,9 +98,9 @@ namespace PCR1000
                     _msgSlot2 = _msgSlot1;
                     _msgSlot1 = new RecvMsg { Message = datarecv, Time = DateTime.Now };
 
-#if DEBUG
+                    #if DEBUG
                     Debug.WriteLineIf(_debugLogger, _server + ":" + _port + " : RECV -> " + datarecv);
-#endif
+                    #endif
                 }
             }
             catch (ThreadAbortException)
@@ -127,9 +114,10 @@ namespace PCR1000
         /// </summary>
         /// <param name="server">The server to connect to.</param>
         /// <param name="port">The port to connect to.</param>
+        /// <param name="ssl">Use SSL to secure connections. This MUST be symmetric.</param>
         /// <param name="password">The password to connect with.</param>
         /// <exception cref="ArgumentException">If invalid arguments are provided.</exception>
-        public PcrNetworkClient(string server, int port = 4456, string password = "")
+        public PcrNetworkClient(string server, int port = 4456, bool ssl = false, string password = "")
         {
             if (string.IsNullOrWhiteSpace(server) || port <= 0)
             {
@@ -138,7 +126,7 @@ namespace PCR1000
             _password = password;
             _server = server;
             _port = port;
-            PcrOpen();
+            _ssl = ssl;
         }
 
         public void Dispose()
@@ -149,7 +137,14 @@ namespace PCR1000
         /// 
         /// </summary>
         public event AutoUpdateDataRecv DataReceived;
+        /// <summary>
+        /// 
+        /// </summary>
         public bool AutoUpdate { get; set; }
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <returns></returns>
         public object GetRawPort()
         {
             return _tcpClient;
@@ -171,6 +166,11 @@ namespace PCR1000
         }
 #endif
 
+        /// <summary>
+        /// Sends a command to the radio.
+        /// </summary>
+        /// <param name="cmd">Command to send.</param>
+        /// <returns>Success.</returns>
         public bool Send(string cmd)
         {
             try
@@ -249,6 +249,10 @@ namespace PCR1000
             }
         }
 
+        /// <summary>
+        /// Opens the connection to the remote radio.
+        /// </summary>
+        /// <returns>Success.</returns>
         public bool PcrOpen()
         {
             try
@@ -258,11 +262,15 @@ namespace PCR1000
                     return true;
                 }
                 _tcpClient = new TcpClient(_server, _port);
-                _tcpStream = _tcpClient.GetStream();
+                _tcpStream = _ssl ? (Stream) new SslStream(_tcpClient.GetStream()) : _tcpClient.GetStream();
                 _tcpBuffer = new byte[_tcpClient.ReceiveBufferSize];
                 _listenActive = true;
                 _tcpListen = new Thread(ListenThread);
                 _tcpListen.Start();
+                if (!string.IsNullOrWhiteSpace(_password))
+                {
+                    Send("<pwd>" + _password + "</pwd>");
+                }
                 return true;
             }
             catch (Exception ex)
@@ -272,6 +280,10 @@ namespace PCR1000
             }
         }
 
+        /// <summary>
+        /// Closes the connection to the remote radio.
+        /// </summary>
+        /// <returns>Success.</returns>
         public bool PcrClose()
         {
             try
@@ -297,22 +309,26 @@ namespace PCR1000
     }
 
     /// <summary>
-    /// 
+    /// Server class to manage remote connections.
     /// </summary>
     public class PcrNetworkServer
     {
-        public int Port { get; protected set; }
+        /// <summary>
+        /// Network port to use. By default this is 4456.
+        /// </summary>
+        private readonly int _port;
 
         /// <summary>
         /// The serial port of the PCR1000.
         /// </summary>
-        public IComm PortComm { get; protected set; }
+        private readonly IComm _portComm;
 
         private TcpListener _tcpListener;
 
-        private TcpClient tcpClient;
+        private TcpClient _tcpClient;
 
-        private string _password;
+        private readonly bool _ssl;
+        private readonly string _password;
         private bool _isAuthenticated;
 
         /// <summary>
@@ -320,24 +336,30 @@ namespace PCR1000
         /// </summary>
         /// <param name="pcrComm">Method of communication to use to connect to the radio.</param>
         /// <param name="netport">Network port to communucate on. Defaults to 4456.</param>
+        /// <param name="ssl">Use SSL to secure connections. This MUST be symmetric.</param>
         /// <param name="password">Password to use. Defaults to none.</param>
-        public PcrNetworkServer(IComm pcrComm, int netport = 4456, string password = "")
+        public PcrNetworkServer(IComm pcrComm, int netport = 4456, bool ssl = false, string password = "")
         {
             Debug.WriteLine("PcrNetwork Being Created");
+            _ssl = ssl;
             _password = password;
-            if (_password == "") _isAuthenticated = true;
-            Port = netport;
+            if (string.IsNullOrWhiteSpace(_password)) _isAuthenticated = true;
+            _port = netport;
+            _portComm = pcrComm;
             pcrComm.DataReceived += PcrCommOnDataReceived;
             Debug.WriteLine("PcrNetwork Created");
         }
 
-        private bool listenContinue = true;
+        private bool _listenContinue = true;
 
+        /// <summary>
+        /// Listen for a new incoming connection.
+        /// </summary>
         private void ListenForClients()
         {
             _tcpListener.Start();
 
-            while (listenContinue)
+            while (_listenContinue)
             {
                 var client = _tcpListener.AcceptTcpClient();
                 var clientThread = new Thread(ListenForCommands);
@@ -345,17 +367,27 @@ namespace PCR1000
             }
         }
 
+        private void Send(string cmd)
+        {
+            var stream = _tcpClient.GetStream();
+            stream.Write(Encoding.ASCII.GetBytes(cmd), 0, cmd.Length);
+        }
+
+        /// <summary>
+        /// Listens for commands from a TcpClient.
+        /// </summary>
+        /// <param name="obj">The TcpClient</param>
         private void ListenForCommands(object obj)
         {
-            tcpClient = (TcpClient)obj;
-            var clientStream = tcpClient.GetStream();
+            _tcpClient = (TcpClient)obj;
+            var clientStream = _ssl ? (Stream) new SslStream(_tcpClient.GetStream()) : _tcpClient.GetStream();
 
             while (true)
             {
                 try
                 {
-                    var message = new byte[tcpClient.ReceiveBufferSize];
-                    var bytesRead = clientStream.Read(message, 0, tcpClient.ReceiveBufferSize);
+                    var message = new byte[_tcpClient.ReceiveBufferSize];
+                    var bytesRead = clientStream.Read(message, 0, _tcpClient.ReceiveBufferSize);
                     if (bytesRead == 0)
                     {
                         break;
@@ -363,24 +395,33 @@ namespace PCR1000
 
                     var cmd = Encoding.ASCII.GetString(message, 0, bytesRead);
 
-                    if (cmd.StartsWith("<") && cmd.EndsWith(">"))
-                    {
-                        
-                    }
-
                     if (!_isAuthenticated)
                     {
-                        var stream = tcpClient.GetStream();
-                        stream.Write(Encoding.ASCII.GetBytes("<authnow>"), 0, 9);
+                        if (cmd.StartsWith("<pwd>") && cmd.EndsWith("</pwd>"))
+                        {
+                            cmd = cmd.Substring(5, cmd.Length - 11);
+                            if (cmd == _password)
+                            {
+                                _isAuthenticated = true;
+                            }
+                            else
+                            {
+                                Send("<auth>fail</auth>");
+                                Stop();
+                                Debug.WriteLine("Network: RECV -> [INVALID AUTH]");
+                            }
+                        }
+                        else
+                        {
+                            Send("<auth>required</auth>");
+                        }
                     }
                     else
                     {
-                        //TODO:_serialPort.Write(cmd);
+                        _portComm.Send(cmd);
                     }
 
-#if DEBUG
                     Debug.WriteLineIf(_debugLogger, "Network : RECV -> " + cmd);
-#endif
                 }
                 catch
                 {
@@ -388,7 +429,7 @@ namespace PCR1000
                 }
             }
 
-            tcpClient.Close();
+            _tcpClient.Close();
         }
 
 #if DEBUG
@@ -408,36 +449,22 @@ namespace PCR1000
         }
 #endif
         /// <summary>
-        /// Method called when data is received from the serial port.
+        /// Method called when data is received from the communication port.
         /// </summary>
-        /// <param name="sender">The serial port that called the method.</param>
-        /// <param name="e">Event arguments.</param>
-
+        /// <param name="sender">The IComm that called the method.</param>
+        /// <param name="recvTime">The time that the message was received.</param>
+        /// <param name="data">Data received.</param>
         private void PcrCommOnDataReceived(IComm sender, DateTime recvTime, string data)
         {
-            /*throw new NotImplementedException();
-        }
-        private void SerialPortDataReceived(object sender, SerialDataReceivedEventArgs e)
-        {*/
-#if DEBUG
-            Debug.WriteLineIf(!_debugLogger, "PcrNetwork Data Recv");
-#endif
+            Debug.WriteLineIf(!_debugLogger, "PCR::NETS->OnDataReceived");
             try
             {
-                /*var recvBuff = new byte[_serialPort.ReadBufferSize];
-                _serialPort.Read(recvBuff, 0, _serialPort.ReadBufferSize);
-                var str = _serialPort.Encoding.GetString(recvBuff);
-                _serialPort.DiscardInBuffer();*/
-
-                if (tcpClient != null)
+                if (_tcpClient != null)
                 {
-                    var stream = tcpClient.GetStream();
-                    //TODO:stream.Write(Encoding.ASCII.GetBytes(str), 0, str.Length);
+                    var stream = _tcpClient.GetStream();
+                    stream.Write(Encoding.ASCII.GetBytes(data), 0, data.Length);
                 }
-
-#if DEBUG
-                Debug.WriteLineIf(_debugLogger, _serialPort.PortName + ": RECV -> " + str);
-#endif
+                Debug.WriteLineIf(_debugLogger, "RECV -> " + data);
             }
             catch (Exception)
             {
@@ -445,18 +472,22 @@ namespace PCR1000
             }
         }
 
+        /// <summary>
+        /// Starts the network server.
+        /// </summary>
+        /// <returns>Success.</returns>
         public bool Start()
         {
             Debug.WriteLine("PCR::NETS->Start");
             try
             {
-                if (listenContinue || !PortComm.PcrOpen())
+                if (_listenContinue || !_portComm.PcrOpen())
                 {
                     return false;
                 }
 
-                listenContinue = true;
-                _tcpListener = new TcpListener(IPAddress.Any, Port);
+                _listenContinue = true;
+                _tcpListener = new TcpListener(IPAddress.Any, _port);
                 var listenThread = new Thread(ListenForClients);
                 listenThread.Start();
             }
@@ -467,12 +498,16 @@ namespace PCR1000
             return true;
         }
 
+        /// <summary>
+        /// Stops the network server.
+        /// </summary>
+        /// <returns>Success.</returns>
         public bool Stop()
         {
             Debug.WriteLine("PCR::NETS->Stop");
             try
             {
-                if (!listenContinue || !PortComm.PcrClose())
+                if (!_listenContinue || !_portComm.PcrClose())
                 {
                     return false;
                 }

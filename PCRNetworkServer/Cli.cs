@@ -12,7 +12,7 @@ namespace PCRNetworkServer
             if (ex != null)
             {
                 Console.ForegroundColor = ConsoleColor.Red;
-                Console.Write("\nERROR: The program failed with an error.\n");
+                Console.WriteLine("ERROR: The program failed with an error.");
                 Console.ForegroundColor = ConsoleColor.Gray;
                 Console.WriteLine(ex.Message);
                 #if DEBUG
@@ -25,14 +25,14 @@ namespace PCRNetworkServer
             name = name.Substring(0, name.LastIndexOf('.'));
 
             Console.ForegroundColor = ConsoleColor.White;
-            Console.WriteLine("\nNAME");
+            Console.WriteLine("NAME");
             Console.ForegroundColor = ConsoleColor.Gray;
-            Console.WriteLine("\t" + name + "\n");
+            Console.WriteLine("\t" + name);
 
             Console.ForegroundColor = ConsoleColor.White;
             Console.WriteLine("\nSYNOPSIS");
             Console.ForegroundColor = ConsoleColor.Gray;
-            Console.WriteLine("\t" + name + " [OPTION]...\n");
+            Console.WriteLine("\t" + name + " [OPTION]...");
 
             Console.ForegroundColor = ConsoleColor.White;
             Console.WriteLine("\nDESCRIPTION");
@@ -63,7 +63,7 @@ namespace PCRNetworkServer
             Console.ForegroundColor = ConsoleColor.White;
             Console.WriteLine("\nCOPYRIGHT");
             Console.ForegroundColor = ConsoleColor.Gray;
-            Console.WriteLine("\tCopyright (c) Matthew Knox. Released under MIT license.\n");
+            Console.WriteLine("\tCopyright (c) Matthew Knox. Released under MIT license.");
 
             #if DEBUG
             Console.ReadKey();
@@ -76,6 +76,7 @@ namespace PCRNetworkServer
             if (Arguments.GetArgumentBool("help") || Arguments.GetArgumentBool("h"))
             {
                 PrintHelp();
+                return;
             }
 
             try
