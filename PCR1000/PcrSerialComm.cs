@@ -21,12 +21,12 @@ namespace PCR1000
     /// <summary>
     /// PCR1000 COM Port Communications Class
     /// </summary>
-    public class PcrComm : IComm
+    public class PcrSerialComm : IComm
     {
         /// <summary>
         /// Data received in autoupdate mode.
         /// </summary>
-        public event AutoUpdateDataRecv AutoUpdateDataReceived;
+        public event AutoUpdateDataRecv DataReceived;
 
         /// <summary>
         /// The serial port of the PCR1000.
@@ -74,7 +74,7 @@ namespace PCR1000
         /// </summary>
         /// <param name="port">COM Port to communicate on. Defaults to COM1</param>
         /// <param name="baud">Baud rate to use. Defaults to 9600.</param>
-        public PcrComm(string port = "COM1", int baud = 9600)
+        public PcrSerialComm(string port = "COM1", int baud = 9600)
         {
             Debug.WriteLine("PcrComm Being Created");
             _serialPort = new SerialPort(port, baud, Parity.None, 8, StopBits.One);
@@ -128,9 +128,9 @@ namespace PCR1000
                 _serialPort.DiscardInBuffer();
                 str = str.Trim(TrimChars);
 
-                if (AutoUpdate && AutoUpdateDataReceived != null)
+                if (AutoUpdate && DataReceived != null)
                 {
-                    AutoUpdateDataReceived(this, DateTime.Now, str);
+                    DataReceived(this, DateTime.Now, str);
                 }
 
                 _msgSlot2 = _msgSlot1;

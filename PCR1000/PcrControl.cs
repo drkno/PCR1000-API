@@ -61,7 +61,7 @@ namespace PCR1000
         /// </summary>
         private bool _pcrStatus;
 
-        /// <summary>
+        /*// <summary>
         ///     Constructor. Initialises the class.
         /// </summary>
         /// <param name="port">COM Port to use.</param>
@@ -98,6 +98,28 @@ namespace PCR1000
             Debug.WriteLine("PcrControl NetSetup");
             _pcrRadio = new PRadInf();
             _pcrComm = new PcrNetworkClient(nethost, netport);
+            _pcrRadio.PcrVolume = 0;
+            _pcrRadio.PcrSquelch = 0;
+            _pcrRadio.PcrFreq = 146000000;
+            _pcrRadio.PcrMode = PcrDef.PCRMODNFM;
+            _pcrRadio.PcrFilter = PcrDef.PCRFLTR15;
+            _pcrRadio.PcrToneSq = "";
+            _pcrRadio.PcrToneSqFloat = 0.0f;
+            _pcrRadio.PcrAutoGain = false;
+            _pcrRadio.PcrNoiseBlank = false;
+            _pcrRadio.PcrRfAttenuator = false;
+            _pcrRadio.PcrAutoUpdate = false;
+            _pcrStatus = false;
+        }*/
+
+        /// <summary>
+        /// Instantiates a new PCR1000 controller
+        /// </summary>
+        /// <param name="communicationChannel">Channel to use to communicate with the radio.</param>
+        public PcrControl(IComm communicationChannel)
+        {
+            _pcrRadio = new PRadInf();
+            _pcrComm = communicationChannel;
             _pcrRadio.PcrVolume = 0;
             _pcrRadio.PcrSquelch = 0;
             _pcrRadio.PcrFreq = 146000000;
@@ -714,7 +736,7 @@ namespace PCR1000
             _pcrComm.PcrClose();
             try
             {
-                _pcrComm = new PcrComm(port);
+                _pcrComm = new PcrSerialComm(port);
                 _pcrComm.PcrOpen();
                 _pcrComm.AutoUpdate = _pcrRadio.PcrAutoUpdate;
                 return true;
@@ -797,7 +819,7 @@ namespace PCR1000
             }
             _pcrComm.Send(_pcrRadio.PcrInitSpeed);
             _pcrComm.PcrClose();
-            _pcrComm = new PcrComm(_pcrRadio.PcrPort, speed);
+            _pcrComm = new PcrSerialComm(_pcrRadio.PcrPort, speed);
             // investigate possible responses, i dont think one is given.
             // PcrCheckResponse();
             _pcrRadio.PcrSpeed = speed;

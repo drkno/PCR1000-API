@@ -13,7 +13,6 @@
 
 using System;
 using System.Diagnostics;
-using System.IO.Ports;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
@@ -56,7 +55,7 @@ namespace PCR1000
         /// <summary>
         /// Password to transmit to server (if requested)
         /// </summary>
-        private string _password;
+        private readonly string _password;
 
         /// <summary>
         /// Received message structure.
@@ -104,9 +103,9 @@ namespace PCR1000
                         }
                     }
 
-                    if (AutoUpdate && AutoUpdateDataReceived != null)
+                    if (AutoUpdate && DataReceived != null)
                     {
-                        AutoUpdateDataReceived(this, DateTime.Now, datarecv);
+                        DataReceived(this, DateTime.Now, datarecv);
                     }
 
                     _msgSlot2 = _msgSlot1;
@@ -149,7 +148,7 @@ namespace PCR1000
         /// <summary>
         /// 
         /// </summary>
-        public event AutoUpdateDataRecv AutoUpdateDataReceived;
+        public event AutoUpdateDataRecv DataReceived;
         public bool AutoUpdate { get; set; }
         public object GetRawPort()
         {
@@ -302,12 +301,14 @@ namespace PCR1000
     /// </summary>
     public class PcrNetworkServer
     {
+        public int Port { get; protected set; }
+
         /// <summary>
         /// The serial port of the PCR1000.
         /// </summary>
-        private readonly SerialPort _serialPort;
+        public IComm PortComm { get; protected set; }
 
-        private readonly TcpListener _tcpListener;
+        private TcpListener _tcpListener;
 
         private TcpClient tcpClient;
 
@@ -317,25 +318,16 @@ namespace PCR1000
         /// <summary>
         /// Instantiate a new PcrNetwork object to communicate with the PCR1000.
         /// </summary>
+        /// <param name="pcrComm">Method of communication to use to connect to the radio.</param>
         /// <param name="netport">Network port to communucate on. Defaults to 4456.</param>
-        /// <param name="port">COM Port to communicate on. Defaults to COM1.</param>
-        /// <param name="baud">Baud rate to use. Defaults to 9600.</param>
         /// <param name="password">Password to use. Defaults to none.</param>
-        public PcrNetworkServer(int netport = 4456, string port = "COM1", int baud = 9600, string password = "")
+        public PcrNetworkServer(IComm pcrComm, int netport = 4456, string password = "")
         {
             Debug.WriteLine("PcrNetwork Being Created");
             _password = password;
             if (_password == "") _isAuthenticated = true;
-            _serialPort = new SerialPort(port, baud, Parity.None, 8, StopBits.One);
-            _serialPort.DataReceived += SerialPortDataReceived;
-            _serialPort.DtrEnable = true;
-            _serialPort.Handshake = Handshake.RequestToSend;
-            _serialPort.Open();
-
-            _tcpListener = new TcpListener(IPAddress.Any, netport);
-            var listenThread = new Thread(ListenForClients);
-            listenThread.Start();
-
+            Port = netport;
+            pcrComm.DataReceived += PcrCommOnDataReceived;
             Debug.WriteLine("PcrNetwork Created");
         }
 
@@ -383,7 +375,7 @@ namespace PCR1000
                     }
                     else
                     {
-                        _serialPort.Write(cmd);
+                        //TODO:_serialPort.Write(cmd);
                     }
 
 #if DEBUG
@@ -420,22 +412,27 @@ namespace PCR1000
         /// </summary>
         /// <param name="sender">The serial port that called the method.</param>
         /// <param name="e">Event arguments.</param>
-        private void SerialPortDataReceived(object sender, SerialDataReceivedEventArgs e)
+
+        private void PcrCommOnDataReceived(IComm sender, DateTime recvTime, string data)
         {
+            /*throw new NotImplementedException();
+        }
+        private void SerialPortDataReceived(object sender, SerialDataReceivedEventArgs e)
+        {*/
 #if DEBUG
             Debug.WriteLineIf(!_debugLogger, "PcrNetwork Data Recv");
 #endif
             try
             {
-                var recvBuff = new byte[_serialPort.ReadBufferSize];
+                /*var recvBuff = new byte[_serialPort.ReadBufferSize];
                 _serialPort.Read(recvBuff, 0, _serialPort.ReadBufferSize);
                 var str = _serialPort.Encoding.GetString(recvBuff);
-                _serialPort.DiscardInBuffer();
+                _serialPort.DiscardInBuffer();*/
 
                 if (tcpClient != null)
                 {
                     var stream = tcpClient.GetStream();
-                    stream.Write(Encoding.ASCII.GetBytes(str), 0, str.Length);
+                    //TODO:stream.Write(Encoding.ASCII.GetBytes(str), 0, str.Length);
                 }
 
 #if DEBUG
@@ -448,17 +445,43 @@ namespace PCR1000
             }
         }
 
-        public void Dispose()
+        public bool Start()
         {
-            Debug.WriteLine("PcrNetwork Dispose");
-            listenContinue = false;
-            _serialPort.Dispose();
+            Debug.WriteLine("PCR::NETS->Start");
+            try
+            {
+                if (listenContinue || !PortComm.PcrOpen())
+                {
+                    return false;
+                }
+
+                listenContinue = true;
+                _tcpListener = new TcpListener(IPAddress.Any, Port);
+                var listenThread = new Thread(ListenForClients);
+                listenThread.Start();
+            }
+            catch (Exception)
+            {
+                return false;
+            }
+            return true;
         }
 
-        public void Stop()
+        public bool Stop()
         {
-            listenContinue = false;
-            _serialPort.Close();
+            Debug.WriteLine("PCR::NETS->Stop");
+            try
+            {
+                if (!listenContinue || !PortComm.PcrClose())
+                {
+                    return false;
+                }
+            }
+            catch (Exception)
+            {
+                return false;
+            }
+            return true;
         }
     }
 }

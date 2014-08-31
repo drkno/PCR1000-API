@@ -1,27 +1,34 @@
 ﻿using System;
-using PCR1000;
+using System.Windows.Forms;
 
 namespace PCRNetworkServer
 {
-    class Program
+    public static class Program
     {
-        static void Main(string[] args)
+        [STAThread]
+        public static void Main(string[] args)
         {
-            var conCol = Console.ForegroundColor;
-            try
+            Arguments.LoadArguments(args);
+
+            switch (Arguments.GetArgument("ui"))
             {
-                var server = new PcrNetworkServer();
-
-                #if DEBUG
-                server.SetDebugLogger(true);
-                #endif
+                case "gui":
+                {
+                    Application.EnableVisualStyles();
+                    Application.SetCompatibleTextRenderingDefault(false);
+                    Application.Run(new Gui());
+                    break;
+                }
+                case "cli":
+                {
+                    Cli.Run();
+                    break;
+                }
+                default:
+                {
+                    goto case "cli";
+                }
             }
-            finally
-            {
-                Console.ForegroundColor = conCol;
-            }
-
-
         }
     }
 }

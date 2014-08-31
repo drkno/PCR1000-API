@@ -36,7 +36,7 @@ namespace PCR1000
         /// <summary>
         /// Data received in autoupdate mode.
         /// </summary>
-        event AutoUpdateDataRecv AutoUpdateDataReceived;
+        event AutoUpdateDataRecv DataReceived;
 
         /// <summary>
         /// Gets and sets autoupdate mode.

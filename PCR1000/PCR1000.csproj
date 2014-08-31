@@ -37,10 +37,10 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="IComm.cs" />
-    <Compile Include="PcrComm.cs" />
+    <Compile Include="PcrSerialComm.cs" />
     <Compile Include="PcrControl.cs" />
     <Compile Include="PcrDef.cs" />
-    <Compile Include="PcrNetwork.cs" />
+    <Compile Include="PcrNetworkComm.cs" />
     <Compile Include="Properties\Annotations.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>

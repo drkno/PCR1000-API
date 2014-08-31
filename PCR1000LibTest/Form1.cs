@@ -18,7 +18,7 @@ namespace PCR1000LibTest
             InitializeComponent();
         }
 
-        readonly PcrControl _pcrControl = new PcrControl("COM1", 9600);
+        readonly PcrControl _pcrControl = new PcrControl(new PcrSerialComm());
 
         private void button1_Click(object sender, EventArgs e)
         {
