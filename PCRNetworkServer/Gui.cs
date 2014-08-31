@@ -44,7 +44,7 @@ namespace PCRNetworkServer
         private bool CheckSettings()
         {
             int port;
-            if (int.TryParse(textBoxNetwork.Text, out port) || port <= 0)
+            if (!int.TryParse(textBoxNetwork.Text, out port) || port <= 0)
             {
                 return false;
             }
@@ -66,7 +66,10 @@ namespace PCRNetworkServer
                 {
                     try
                     {
-                        _pcrNetworkServer.Stop();
+                        if (!_pcrNetworkServer.Stop())
+                        {
+                            throw new Exception("A fatal error occured while stopping the server. Please check debug messages for details.");
+                        }
                     }
                     catch (Exception ex)
                     {
@@ -77,6 +80,9 @@ namespace PCRNetworkServer
                     buttonOnOff.BackColor = Color.FromArgb(255, 128, 128);
                     textBoxNetwork.Enabled = true;
                     comboBoxSerialPort.Enabled = true;
+                    checkBoxUseSecurity.Enabled = true;
+                    checkBoxSsl.Enabled = checkBoxUseSecurity.Checked;
+                    textBoxPassword.Enabled = checkBoxUseSecurity.Checked;
                     _isOn = false;
                     break;
                 }
@@ -99,6 +105,11 @@ namespace PCRNetworkServer
                         #if DEBUG
                         _pcrNetworkServer.SetDebugLogger(true);
                         #endif
+
+                        if (!_pcrNetworkServer.Start())
+                        {
+                            throw new Exception("Server startup failed. Review debug messages for details.");
+                        }
                     }
                     catch (Exception ex)
                     {
@@ -111,6 +122,9 @@ namespace PCRNetworkServer
                     buttonOnOff.BackColor = Color.FromArgb(192, 255, 192);
                     textBoxNetwork.Enabled = false;
                     comboBoxSerialPort.Enabled = false;
+                    checkBoxUseSecurity.Enabled = false;
+                    checkBoxSsl.Enabled = false;
+                    textBoxPassword.Enabled = false;
                     _isOn = true;
                     break;
                 }

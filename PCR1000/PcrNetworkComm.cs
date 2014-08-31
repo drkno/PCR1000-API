@@ -350,7 +350,7 @@ namespace PCR1000
             Debug.WriteLine("PcrNetwork Created");
         }
 
-        private bool _listenContinue = true;
+        private bool _listenContinue;
 
         /// <summary>
         /// Listen for a new incoming connection.
@@ -477,6 +477,8 @@ namespace PCR1000
             }
         }
 
+        private Thread _listenThread;
+
         /// <summary>
         /// Starts the network server.
         /// </summary>
@@ -493,8 +495,8 @@ namespace PCR1000
 
                 _listenContinue = true;
                 _tcpListener = new TcpListener(IPAddress.Any, _port);
-                var listenThread = new Thread(ListenForClients);
-                listenThread.Start();
+                _listenThread = new Thread(ListenForClients);
+                _listenThread.Start();
             }
             catch (Exception)
             {
@@ -516,6 +518,9 @@ namespace PCR1000
                 {
                     return false;
                 }
+                _listenContinue = false;
+                _tcpListener.Stop();
+                _listenThread.Abort();
             }
             catch (Exception)
             {

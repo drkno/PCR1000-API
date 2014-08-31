@@ -65,10 +65,11 @@
             // 
             this.comboBoxSerialPort.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
             this.comboBoxSerialPort.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.comboBoxSerialPort.Font = new System.Drawing.Font("Arial", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.comboBoxSerialPort.FormattingEnabled = true;
-            this.comboBoxSerialPort.Location = new System.Drawing.Point(98, 19);
+            this.comboBoxSerialPort.Location = new System.Drawing.Point(98, 18);
             this.comboBoxSerialPort.Name = "comboBoxSerialPort";
-            this.comboBoxSerialPort.Size = new System.Drawing.Size(121, 22);
+            this.comboBoxSerialPort.Size = new System.Drawing.Size(121, 23);
             this.comboBoxSerialPort.TabIndex = 1;
             // 
             // labelState
@@ -95,7 +96,7 @@
             // 
             this.labelSerial.AutoSize = true;
             this.labelSerial.Font = new System.Drawing.Font("Arial", 9.75F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.labelSerial.Location = new System.Drawing.Point(21, 23);
+            this.labelSerial.Location = new System.Drawing.Point(21, 22);
             this.labelSerial.Name = "labelSerial";
             this.labelSerial.Size = new System.Drawing.Size(73, 16);
             this.labelSerial.TabIndex = 4;
