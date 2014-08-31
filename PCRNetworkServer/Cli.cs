@@ -46,6 +46,16 @@ namespace PCRNetworkServer
             Console.WriteLine("\t\tDisplays this help.\n");
 
             Console.ForegroundColor = ConsoleColor.White;
+            Console.WriteLine("\t-l, --ssl");
+            Console.ForegroundColor = ConsoleColor.Gray;
+            Console.WriteLine("\t\tUse SSL for the security of the server.\n");
+
+            Console.ForegroundColor = ConsoleColor.White;
+            Console.WriteLine("\t-p, --passwd");
+            Console.ForegroundColor = ConsoleColor.Gray;
+            Console.WriteLine("\t\tPassword to use to authenticate the connection.\n");
+
+            Console.ForegroundColor = ConsoleColor.White;
             Console.WriteLine("\t-n, --nport");
             Console.ForegroundColor = ConsoleColor.Gray;
             Console.WriteLine("\t\tNetwork port to use. Defaults to 4456.\n");
@@ -72,6 +82,8 @@ namespace PCRNetworkServer
 
         public static void Run()
         {
+            var title = Console.Title;
+            Console.Title = "Network Server";
             var conCol = Console.ForegroundColor;
             if (Arguments.GetArgumentBool("help") || Arguments.GetArgumentBool("h"))
             {
@@ -99,7 +111,16 @@ namespace PCRNetworkServer
                     }
                 }
 
-                _pcrNetworkServer = new PcrNetworkServer(new PcrSerialComm(sport), nport);
+                var passwd = Arguments.GetArgument("passwd");
+                if (string.IsNullOrWhiteSpace(passwd))
+                {
+                    passwd = Arguments.GetArgument("p");
+                }
+
+                var ssl = Arguments.GetArgumentBool("ssl") || Arguments.GetArgumentBool("l");
+                _pcrNetworkServer = !string.IsNullOrWhiteSpace(passwd) || ssl ?
+                            new PcrNetworkServer(new PcrSerialComm(sport), nport, ssl, passwd) :
+                            new PcrNetworkServer(new PcrSerialComm(sport), nport);
                 #if DEBUG
                 _pcrNetworkServer.SetDebugLogger(true);
                 #endif
@@ -122,6 +143,7 @@ namespace PCRNetworkServer
                 PrintHelp(ex);
             }
             Console.ForegroundColor = conCol;
+            Console.Title = title;
         }
     }
 }

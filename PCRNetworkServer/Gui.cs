@@ -26,12 +26,25 @@ namespace PCRNetworkServer
             {
                 textBoxNetwork.Text = Arguments.GetArgument("nport");
             }
+
+            textBoxPassword.Text = Arguments.GetArgument("passwd");
+            if (string.IsNullOrWhiteSpace(textBoxPassword.Text))
+            {
+                textBoxPassword.Text = Arguments.GetArgument("p");
+            }
+
+            checkBoxSsl.Checked = Arguments.GetArgumentBool("ssl") || Arguments.GetArgumentBool("l");
+
+            if (checkBoxSsl.Checked || !string.IsNullOrWhiteSpace(textBoxPassword.Text))
+            {
+                checkBoxUseSecurity.Checked = true;
+            }
         }
 
         private bool CheckSettings()
         {
             int port;
-            if (int.TryParse(textBoxNetwork.Text, out port))
+            if (int.TryParse(textBoxNetwork.Text, out port) || port <= 0)
             {
                 return false;
             }
@@ -80,7 +93,9 @@ namespace PCRNetworkServer
                         var port = int.Parse(textBoxNetwork.Text);
                         var comp = comboBoxSerialPort.SelectedItem.ToString();
                         IComm comm = new PcrSerialComm(comp);
-                        _pcrNetworkServer = new PcrNetworkServer(comm, port);
+                        _pcrNetworkServer = checkBoxUseSecurity.Checked ? 
+                            new PcrNetworkServer(comm, port, checkBoxSsl.Checked, textBoxPassword.Text) : 
+                            new PcrNetworkServer(comm, port);
                         #if DEBUG
                         _pcrNetworkServer.SetDebugLogger(true);
                         #endif
@@ -100,6 +115,20 @@ namespace PCRNetworkServer
                     break;
                 }
             }
+        }
+
+        private void CheckBoxUseSecurityCheckedChanged(object sender, EventArgs e)
+        {
+            textBoxPassword.Enabled = checkBoxUseSecurity.Checked;
+            checkBoxSsl.Enabled = checkBoxUseSecurity.Checked;
+        }
+
+        private void GuiFormClosing(object sender, FormClosingEventArgs e)
+        {
+            if (buttonOnOff.Text != "ON") return;
+            e.Cancel = true;
+            MessageBox.Show("Please turn off the server before quitting.", "Quit", 
+                MessageBoxButtons.OK, MessageBoxIcon.Exclamation);
         }
     }
 }
