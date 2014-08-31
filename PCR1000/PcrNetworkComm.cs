@@ -420,8 +420,9 @@ namespace PCR1000
                     {
                         _portComm.Send(cmd);
                     }
-
+#if DEBUG
                     Debug.WriteLineIf(_debugLogger, "Network : RECV -> " + cmd);
+#endif
                 }
                 catch
                 {
@@ -456,7 +457,9 @@ namespace PCR1000
         /// <param name="data">Data received.</param>
         private void PcrCommOnDataReceived(IComm sender, DateTime recvTime, string data)
         {
+#if DEBUG
             Debug.WriteLineIf(!_debugLogger, "PCR::NETS->OnDataReceived");
+#endif
             try
             {
                 if (_tcpClient != null)
@@ -464,7 +467,9 @@ namespace PCR1000
                     var stream = _tcpClient.GetStream();
                     stream.Write(Encoding.ASCII.GetBytes(data), 0, data.Length);
                 }
+#if DEBUG
                 Debug.WriteLineIf(_debugLogger, "RECV -> " + data);
+#endif
             }
             catch (Exception)
             {

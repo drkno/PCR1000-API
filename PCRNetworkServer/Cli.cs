@@ -14,7 +14,8 @@ namespace PCRNetworkServer
                 Console.ForegroundColor = ConsoleColor.Red;
                 Console.WriteLine("ERROR: The program failed with an error.");
                 Console.ForegroundColor = ConsoleColor.Gray;
-                Console.WriteLine(ex.Message);
+                Console.WriteLine(ex.Message + "\n");
+                Console.WriteLine("For further help start with -h or --help.");
                 #if DEBUG
                 Console.ReadKey();
                 #endif
@@ -44,6 +45,11 @@ namespace PCRNetworkServer
             Console.WriteLine("\t-h, --help");
             Console.ForegroundColor = ConsoleColor.Gray;
             Console.WriteLine("\t\tDisplays this help.\n");
+
+            Console.ForegroundColor = ConsoleColor.White;
+            Console.WriteLine("\t-u, --ui");
+            Console.ForegroundColor = ConsoleColor.Gray;
+            Console.WriteLine("\t\tDetermines what ui to display (gui/cli).\n");
 
             Console.ForegroundColor = ConsoleColor.White;
             Console.WriteLine("\t-l, --ssl");
