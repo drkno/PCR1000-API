@@ -132,6 +132,12 @@ namespace PCR1000
                 {
                     DataReceived(this, DateTime.Now, str);
                 }
+#if DEBUG
+                else
+                {
+                    Debug.WriteLineIf(_debugLogger, "Warning: DataReceived is null.");
+                }
+#endif
 
                 _msgSlot2 = _msgSlot1;
                 _msgSlot1 = new RecvMsg { Message = str, Time = DateTime.Now };

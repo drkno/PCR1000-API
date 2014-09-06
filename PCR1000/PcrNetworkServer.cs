@@ -77,6 +77,7 @@ namespace PCR1000
 
         private void Send(string cmd)
         {
+            Debug.WriteLine("IComm: Send -> " + cmd);
             var stream = _tcpClient.GetStream();
             stream.Write(Encoding.ASCII.GetBytes(cmd), 0, cmd.Length);
         }
@@ -87,6 +88,7 @@ namespace PCR1000
         /// <param name="obj">The TcpClient</param>
         private void ListenForCommands(object obj)
         {
+            Debug.WriteLine("Client Connected");
             _tcpClient = (TcpClient)obj;
             var clientStream = _ssl ? (Stream)new SslStream(_tcpClient.GetStream()) : _tcpClient.GetStream();
 
@@ -111,6 +113,8 @@ namespace PCR1000
                             if (cmd == _password)
                             {
                                 _isAuthenticated = true;
+                                Send("<auth>pass</auth>");
+                                Debug.WriteLine("Network: RECV -> [PASS AUTH]");
                             }
                             else
                             {
@@ -121,19 +125,19 @@ namespace PCR1000
                         }
                         else
                         {
+                            Debug.WriteLine("Network: RECV -> [REQUIRED AUTH]");
                             Send("<auth>required</auth>");
                         }
                     }
                     else
                     {
+                        Debug.WriteLine("Network: RECV -> " + cmd);
                         _portComm.Send(cmd);
                     }
-#if DEBUG
-                    Debug.WriteLineIf(_debugLogger, "Network : RECV -> " + cmd);
-#endif
                 }
-                catch
+                catch (Exception e)
                 {
+                    Debug.WriteLine("Client disconnect with exception: " + e.Message);
                     break;
                 }
             }
@@ -229,6 +233,7 @@ namespace PCR1000
                 _listenContinue = false;
                 _tcpListener.Stop();
                 _listenThread.Abort();
+                _listenThread.Join();
             }
             catch (Exception)
             {
