@@ -128,7 +128,7 @@ namespace PCR1000
                 _serialPort.DiscardInBuffer();
                 str = str.Trim(TrimChars);
 
-                if (AutoUpdate && DataReceived != null)
+                if (DataReceived != null)
                 {
                     DataReceived(this, DateTime.Now, str);
                 }
