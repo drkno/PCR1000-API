@@ -1,5 +1,8 @@
 ﻿using System;
+using System.IO.Ports;
+using System.Linq;
 using PCR1000;
+using PCR1000.Network;
 
 namespace PCRNetworkServer
 {
@@ -69,7 +72,12 @@ namespace PCRNetworkServer
             Console.ForegroundColor = ConsoleColor.White;
             Console.WriteLine("\t-s, --sport");
             Console.ForegroundColor = ConsoleColor.Gray;
-            Console.WriteLine("\t\tSerial port to use. Defaults to COM1.");
+            Console.WriteLine("\t\tSerial port to use. Defaults to first serial port.");
+
+            Console.ForegroundColor = ConsoleColor.White;
+            Console.WriteLine("\t-d, --devices");
+            Console.ForegroundColor = ConsoleColor.Gray;
+            Console.WriteLine("\t\tLists all avalible devices.");
 
             Console.ForegroundColor = ConsoleColor.White;
             Console.WriteLine("\nAUTHOR");
@@ -97,6 +105,16 @@ namespace PCRNetworkServer
                 return;
             }
 
+            var portNames = SerialPort.GetPortNames();
+            if (Arguments.GetArgumentBool("devices") || Arguments.GetArgumentBool("d"))
+            {
+                foreach (var portName in portNames)
+                {
+                    Console.WriteLine(portName);
+                }
+                return;
+            }
+
             try
             {
                 int nport;
@@ -109,12 +127,19 @@ namespace PCRNetworkServer
                 }
 
                 string sport;
-                if (string.IsNullOrWhiteSpace(sport = Arguments.GetArgument("sport")))
+                if (string.IsNullOrWhiteSpace(sport = Arguments.GetArgument("sport")) && string.IsNullOrWhiteSpace(sport = Arguments.GetArgument("s")))
                 {
-                    if (string.IsNullOrWhiteSpace(sport = Arguments.GetArgument("s")))
+                    if (portNames.Length == 0)
                     {
-                        sport = "COM1";
+                        Console.Error.WriteLine("No serial ports are avalible for use!");
+                        return;
                     }
+                    sport = portNames[0];
+                }
+                else if (!portNames.Contains(sport))
+                {
+                    Console.Error.WriteLine("Serial port provided does not exist on this system.");
+                    return;
                 }
 
                 var passwd = Arguments.GetArgument("passwd");

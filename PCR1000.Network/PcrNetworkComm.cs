@@ -16,263 +16,11 @@ using System.Diagnostics;
 using System.IO;
 using System.Net.Security;
 using System.Net.Sockets;
-using System.Security.Authentication;
 using System.Text;
 using System.Threading;
 
-namespace PCR1000
+namespace PCR1000.Network
 {
-    /*public class PcrNetworkClientComm : IComm
-    {
-        private string server;
-        private int port;
-        private bool ssl;
-        private string password;
-        private TcpClient _tcpClient;
-        private Stream _tcpStream;
-        private Thread _listenThread;
-        private bool isAuthenticated;
-
-        private void ListenThread()
-        {
-
-            while (isAuthenticated)
-            {
-                _tcpStream.Length;
-                
-                _tcpStream.Read()
-                _tcpStream.Flush();
-            }
-        }
-
-        public PcrNetworkClientComm(string server, int port = 4456, bool ssl = false, string password = "")
-        {
-            this.server = server;
-            this.port = port;
-            this.ssl = ssl;
-            this.password = password;
-
-            if (string.IsNullOrWhiteSpace(password))
-            {
-                isAuthenticated = true;
-            }
-        }
-
-        public bool PcrOpen()
-        {
-            try
-            {
-                _tcpClient = new TcpClient();
-                _tcpClient.Connect(server, port);
-                _tcpStream = ssl
-                    ? (Stream) new SslStream(_tcpClient.GetStream())
-                    : _tcpClient.GetStream();
-
-                _listenThread = new Thread(ListenThread);
-                _listenThread.Start();
-
-                if (!isAuthenticated)
-                {
-                    var str = SendWait("<auth>" + password + "</auth>");
-                    if (str != "<auth>pass</auth>")
-                    {
-                        _listenThread.Abort();
-                        throw new AuthenticationException("Not Authorised");
-                    }
-                    isAuthenticated = true;
-                }
-            }
-            catch (Exception)
-            {
-                return false;
-            }
-            return true;
-        }
-
-        public bool PcrClose()
-        {
-            _listenThread.Abort();
-            return true;
-        }
-
-        public void Dispose()
-        {
-            Debug.WriteLine("PcrComm Dispose");
-            PcrClose();
-        }
-
-        public event AutoUpdateDataRecv DataReceived;
-        public bool AutoUpdate { get; set; }
-        public object GetRawPort()
-        {
-            return _tcpClient;
-        }
-
-#if DEBUG
-        /// <summary>
-        /// Keeps track of wheather debug logging is enabled.
-        /// </summary>
-        private bool _debugLogger;
-
-        /// <summary>
-        /// Enables or disables debug logging in the comminication library.
-        /// </summary>
-        /// <param name="debug">Enable or disable.</param>
-        public void SetDebugLogger(bool debug)
-        {
-            Debug.WriteLine("PcrComm Debug Logging: " + debug);
-            _debugLogger = debug;
-        }
-#endif
-
-        public bool Send(string cmd)
-        {
-            try
-            {
-                _tcpStream.WriteAsync(Encoding.ASCII.GetBytes(cmd), 0, cmd.Length);
-            }
-            catch (Exception)
-            {
-                return false;
-            }
-            return true;
-        }
-
-        /// <summary>
-        /// Number of 50ms timeouts to wait before aborting in SendWait.
-        /// </summary>
-        private const int RecvTimeout = 20;
-
-        /// <summary>
-        /// Sends a message to the PCR1000 and waits for a reply.
-        /// </summary>
-        /// <param name="cmd">The command to send.</param>
-        /// <param name="overrideAutoupdate">When in autoupdate mode behaves like Send()
-        /// this overrides that behaviour.</param>
-        /// <returns>The reply or "" if nothing is received.</returns>
-        public string SendWait(string cmd, bool overrideAutoupdate = false)
-        {
-            Debug.WriteLine("PcrComm SendWait");
-            Send(cmd);
-            if (AutoUpdate && !overrideAutoupdate) return "";
-            var dt = DateTime.Now;
-            for (var i = 0; i < RecvTimeout; i++)
-            {
-                if (dt < _msgSlot1.Time)
-                {
-                    return dt < _msgSlot2.Time ? _msgSlot2.Message : _msgSlot1.Message;
-                }
-                Thread.Sleep(50);
-            }
-            return "";
-        }
-
-        /// <summary>
-        /// Received message structure.
-        /// </summary>
-        private struct RecvMsg
-        {
-            /// <summary>
-            /// The message received.
-            /// </summary>
-            public string Message;
-
-            /// <summary>
-            /// The time the message was received.
-            /// </summary>
-            public DateTime Time;
-        }
-
-        /// <summary>
-        /// Last two received messages.
-        /// </summary>
-        private RecvMsg _msgSlot1, _msgSlot2;
-
-        /// <summary>
-        /// Gets the latest message from the PCR1000.
-        /// </summary>
-        /// <returns>The latest message.</returns>
-        public string GetLastReceived()
-        {
-            Debug.WriteLine("PcrComm Last Recv");
-            try
-            {
-                return _msgSlot1.Message;
-            }
-            catch (Exception)
-            {
-                return "";
-            }
-        }
-
-        /// <summary>
-        /// Gets the previously received message.
-        /// </summary>
-        /// <returns>The previous message.</returns>
-        public string GetPrevReceived()
-        {
-            Debug.WriteLine("PcrComm PrevRecv");
-            try
-            {
-                return _msgSlot2.Message;
-            }
-            catch (Exception)
-            {
-                return "";
-            }
-        }
-    }*/
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    
     /// <summary>
     /// Client to connect to a remote radio.
     /// </summary>
@@ -380,22 +128,29 @@ namespace PCR1000
             _ssl = ssl;
         }
 
+        /// <summary>
+        /// Disposes of the PcrNetworkClient
+        /// </summary>
         public void Dispose()
         {
+            if (!_tcpClient.Connected) return;
+            _tcpListen.Abort();
+            _tcpListen.Join();
+            _tcpClient.Close();
         }
 
         /// <summary>
-        /// 
+        /// Data was received from the remote radio.
         /// </summary>
         public event AutoUpdateDataRecv DataReceived;
         /// <summary>
-        /// 
+        /// The remote radio should auto-update.
         /// </summary>
         public bool AutoUpdate { get; set; }
         /// <summary>
-        /// 
+        /// Gets the underlying system port of the radio.
         /// </summary>
-        /// <returns></returns>
+        /// <returns>The network port connected to the remote radio.</returns>
         public object GetRawPort()
         {
             return _tcpClient;

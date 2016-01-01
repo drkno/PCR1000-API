@@ -7,7 +7,7 @@ using System.Net.Sockets;
 using System.Text;
 using System.Threading;
 
-namespace PCR1000
+namespace PCR1000.Network
 {
     /// <summary>
     /// Server class to manage remote connections.

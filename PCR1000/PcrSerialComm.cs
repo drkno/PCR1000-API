@@ -14,7 +14,9 @@
 using System;
 using System.Diagnostics;
 using System.IO.Ports;
+using System.Linq;
 using System.Threading;
+using PCR1000.SerialPorts;
 
 namespace PCR1000
 {
@@ -31,7 +33,7 @@ namespace PCR1000
         /// <summary>
         /// The serial port of the PCR1000.
         /// </summary>
-        private readonly SerialPort _serialPort;
+        private readonly PcrSerialPort _serialPort;
 
         /// <summary>
         /// Gets and sets autoupdate mode.
@@ -72,12 +74,31 @@ namespace PCR1000
         /// <summary>
         /// Instantiate a new PcrComm object to communicate with the PCR1000.
         /// </summary>
-        /// <param name="port">COM Port to communicate on. Defaults to COM1</param>
+        /// <param name="port">COM Port to communicate on. Defaults to first COM device.</param>
         /// <param name="baud">Baud rate to use. Defaults to 9600.</param>
-        public PcrSerialComm(string port = "COM1", int baud = 9600)
+        public PcrSerialComm(string port = null, int baud = 9600)
         {
             Debug.WriteLine("PcrComm Being Created");
-            _serialPort = new SerialPort(port, baud, Parity.None, 8, StopBits.One);
+            var portNames = SerialPort.GetPortNames();
+            if (string.IsNullOrWhiteSpace(port))
+            {
+                if (portNames.Length == 0)
+                {
+                    Debug.WriteLine("PcrComm Error: No port provided and no ports avalible.");
+                    throw new InvalidOperationException("Cannot open serial port when there are none.");
+                }
+                port = portNames[0];
+            }
+
+            if (!portNames.Contains(port))
+            {
+                Debug.WriteLine("PcrComm Error: the serial port provided does not exist.");
+                throw new ArgumentException("Serial port provided does not exist.", nameof(port));
+            }
+
+            _serialPort =  IsRunningOnMono()
+                ? (PcrSerialPort) new MonoSerialPort(port, baud, Parity.None, 8, StopBits.One)
+                : new MsSerialPort(port, baud, Parity.None, 8, StopBits.One);
             _serialPort.DataReceived += SerialPortDataReceived;
             _serialPort.DtrEnable = true;
             _serialPort.Handshake = Handshake.RequestToSend;
@@ -281,11 +302,27 @@ namespace PCR1000
             }
         }
 
+        /// <summary>
+        /// Dispose of the seial communications port.
+        /// </summary>
         public void Dispose()
         {
             Debug.WriteLine("PcrComm Dispose");
             PcrClose();
             _serialPort.Dispose();
         }
+
+        #region Mono
+        /*
+            Deal with mono specfic hacks here, to make it compatible with the
+            implementation it should have been.
+        */
+
+        private static bool IsRunningOnMono()
+        {
+            return Type.GetType("Mono.Runtime") != null;
+        }
+
+        #endregion
     }
 }

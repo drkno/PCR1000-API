@@ -3,6 +3,7 @@ using System.Drawing;
 using System.IO.Ports;
 using System.Windows.Forms;
 using PCR1000;
+using PCR1000.Network;
 
 namespace PCRNetworkServer
 {

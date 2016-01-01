@@ -1,6 +1,6 @@
 ﻿namespace PCR1000LibTest
 {
-    partial class Form1
+    partial class Control
     {
         /// <summary>
         /// Required designer variable.
