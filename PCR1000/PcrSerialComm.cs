@@ -277,8 +277,9 @@ namespace PCR1000
                 _serialPort.Open();
                 return true;
             }
-            catch (Exception)
+            catch (Exception e)
             {
+                Debug.WriteLine("PcrComm Open failed with exception:\n" + e.Message + "\n" + e.StackTrace);
                 return false;
             }
         }

@@ -23,7 +23,7 @@ namespace PCRNetworkServer
 
             if (!_pcrNetworkServer.Start())
             {
-                throw new Exception("Starting the network server failed.");
+                throw new InvalidOperationException("Starting the network server failed.");
             }
 
             Console.WriteLine("Server Started. Press any key to stop...");
@@ -31,7 +31,7 @@ namespace PCRNetworkServer
 
             if (!_pcrNetworkServer.Stop())
             {
-                throw new Exception("Stopping the network server failed.");
+                throw new InvalidOperationException("Stopping the network server failed.");
             }
             Console.ForegroundColor = conCol;
             Console.Title = title;

@@ -59,6 +59,9 @@ namespace PCRNetworkServer
         [STAThread]
         public static void Main(string[] args)
         {
+#if DEBUG
+            Debug.Listeners.Add(new TextWriterTraceListener(Console.Out));
+#endif
             try
             {
                 string ui = "cli", password = "", device = null;
@@ -144,6 +147,9 @@ namespace PCRNetworkServer
                 {
                     Console.Error.WriteLine("A fatal error occured while running " + name +
                         ". One of your options was probably malformed. ");
+#if DEBUG
+                    Console.Error.WriteLine(e.StackTrace);
+#endif
                 }
 
                 Console.Error.WriteLine("Try '" + name + " --help' for more information.");

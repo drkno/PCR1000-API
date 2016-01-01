@@ -210,8 +210,9 @@ namespace PCR1000.Network
                 _listenThread = new Thread(ListenForClients);
                 _listenThread.Start();
             }
-            catch (Exception)
+            catch (Exception e)
             {
+                Debug.WriteLine("PCR::NETS->Start Failed to start server with error:\n" + e.Message + "\n" + e.StackTrace);
                 return false;
             }
             return true;

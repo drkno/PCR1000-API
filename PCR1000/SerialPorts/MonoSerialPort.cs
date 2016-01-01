@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Diagnostics;
 using System.IO.Ports;
 using System.IO;
 using System.Runtime.InteropServices;
@@ -18,11 +19,13 @@ namespace PCR1000.SerialPorts
         public MonoSerialPort(string port, int baud, Parity parity, int dataBits, StopBits stopBits)
             : base(port, baud, parity, dataBits, stopBits)
         {
+            Debug.WriteLine("MonoSerialPort -> _cstor");
             SerialPort.ReadTimeout = 100;
         }
 
         public override void Dispose()
         {
+            Debug.WriteLine("MonoSerialPort -> Dispose");
             if (_listenThread != null && _listenThread.IsAlive)
             {
                 _listenThread.Abort();
@@ -33,13 +36,13 @@ namespace PCR1000.SerialPorts
 
         public override void Open()
         {
+            Debug.WriteLine("MonoSerialPort -> Open");
+            Debug.Assert(SerialPort != null, "Somehow the serial port was never setup correctly.");
             SerialPort.Open();
-            
-            var fieldInfo = SerialPort.BaseStream.GetType().GetField("_fd", BindingFlags.Instance | BindingFlags.NonPublic);
+            var fieldInfo = SerialPort.BaseStream.GetType().GetField("fd", BindingFlags.Instance | BindingFlags.NonPublic);
             _fd = (int) fieldInfo.GetValue(SerialPort.BaseStream);
             _disposedFieldInfo = SerialPort.BaseStream.GetType().GetField("disposed", BindingFlags.Instance | BindingFlags.NonPublic);
-
-            _listenThread = new Thread(EventThreadFunction);
+            _listenThread = new Thread(EventThreadFunction) {IsBackground = true};
             _listenThread.Start();
         }
 
@@ -76,7 +79,7 @@ namespace PCR1000.SerialPorts
             CheckDisposed(stream);
             if (IsOpen == false)
             {
-                throw new Exception("port is closed");
+                throw new Exception("The serial port is closed.");
             }
             int error;
 
@@ -93,6 +96,7 @@ namespace PCR1000.SerialPorts
 
         private static void ThrowIoException()
         {
+            Debug.WriteLine("MonoSerialPort -> ThrowIoException");
             var errnum = Marshal.GetLastWin32Error();
             var errorMessage = Marshal.PtrToStringAnsi(strerror(errnum));
             throw new IOException(errorMessage);
