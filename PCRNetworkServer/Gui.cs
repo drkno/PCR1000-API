@@ -11,30 +11,20 @@ namespace PCRNetworkServer
     {
         private PcrNetworkServer _pcrNetworkServer;
 
-        public Gui()
+        public Gui(bool security, string password, int port, string device)
         {
             InitializeComponent();
 
             var ports = SerialPort.GetPortNames();
-            foreach (var port in ports)
+            foreach (var dev in ports)
             {
-                comboBoxSerialPort.Items.Add(port);
-            }
-            comboBoxSerialPort.SelectedValue = Arguments.GetArgument("sport");
-
-            int n;
-            if (int.TryParse(Arguments.GetArgument("nport"), out n))
-            {
-                textBoxNetwork.Text = Arguments.GetArgument("nport");
+                comboBoxSerialPort.Items.Add(dev);
             }
 
-            textBoxPassword.Text = Arguments.GetArgument("passwd");
-            if (string.IsNullOrWhiteSpace(textBoxPassword.Text))
-            {
-                textBoxPassword.Text = Arguments.GetArgument("p");
-            }
-
-            checkBoxSsl.Checked = Arguments.GetArgumentBool("ssl") || Arguments.GetArgumentBool("l");
+            comboBoxSerialPort.SelectedIndex = comboBoxSerialPort.Items.IndexOf(device);
+            textBoxNetwork.Text = port.ToString();
+            textBoxPassword.Text = password;
+            checkBoxSsl.Checked = security;
 
             if (checkBoxSsl.Checked || !string.IsNullOrWhiteSpace(textBoxPassword.Text))
             {
@@ -50,12 +40,7 @@ namespace PCRNetworkServer
                 return false;
             }
 
-            if (comboBoxSerialPort.SelectedIndex == -1)
-            {
-                return false;
-            }
-
-            return true;
+            return comboBoxSerialPort.SelectedIndex != -1;
         }
 
         private bool _isOn;
