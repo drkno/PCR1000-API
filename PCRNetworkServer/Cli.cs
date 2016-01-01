@@ -14,9 +14,7 @@ namespace PCRNetworkServer
             Console.Title = "Network Server";
             var conCol = Console.ForegroundColor;
 
-            _pcrNetworkServer = !string.IsNullOrWhiteSpace(password) || security ?
-                        new PcrNetworkServer(new PcrSerialComm(device), port, security, password) :
-                        new PcrNetworkServer(new PcrSerialComm(device), port);
+            _pcrNetworkServer = new PcrNetworkServer(new PcrSerialComm(device), port, security, password);
             #if DEBUG
             _pcrNetworkServer.SetDebugLogger(true);
             #endif

@@ -41,10 +41,10 @@ namespace PCR1000.Network
         /// <param name="password">Password to use. Defaults to none.</param>
         public PcrNetworkServer(IComm pcrComm, int netport = 4456, bool ssl = false, string password = "")
         {
-            Debug.WriteLine("PcrNetwork Being Created");
+            Debug.WriteLine($"PcrNetwork Being Created: port={netport} ssl={ssl} password=\"{password}\"");
             _ssl = ssl;
             _password = password;
-            if (string.IsNullOrWhiteSpace(_password)) _isAuthenticated = true;
+            if (string.IsNullOrEmpty(_password)) _isAuthenticated = true;
             _port = netport;
             _portComm = pcrComm;
             pcrComm.DataReceived += PcrCommOnDataReceived;
@@ -71,7 +71,14 @@ namespace PCR1000.Network
             }
             catch (Exception ex)
             {
-                Debug.WriteLine("Listen encountered exception: " + ex.Message);
+                if (_listenContinue)
+                {
+                    Debug.WriteLine("Listen encountered exception: " + ex.Message);
+                }
+                else
+                {
+                    Debug.WriteLine("Listen thread shutting down.");
+                }
             }
         }
 
@@ -88,7 +95,7 @@ namespace PCR1000.Network
         /// <param name="obj">The TcpClient</param>
         private void ListenForCommands(object obj)
         {
-            Debug.WriteLine("Client Connected");
+            Debug.WriteLine("Network: Client Connected");
             _tcpClient = (TcpClient)obj;
             var clientStream = _ssl ? (Stream)new SslStream(_tcpClient.GetStream()) : _tcpClient.GetStream();
 
@@ -137,7 +144,7 @@ namespace PCR1000.Network
                 }
                 catch (Exception e)
                 {
-                    Debug.WriteLine("Client disconnect with exception: " + e.Message);
+                    Debug.WriteLine("Client disconnect with exception: " + e.Message + "\n" + e.StackTrace);
                     break;
                 }
             }
