@@ -27,7 +27,6 @@ namespace PCRNetworkServer
                        null,
                        "Written by Matthew Knox.",
                        "Version:\t" + fvi.ProductVersion + " " + (Environment.Is64BitProcess ? "x64" : "x32") +
-                       "\nBuild:\t\tr" + fvi.FileBuildPart +
                        "\nCLR Version:\t" + Environment.Version +
                        "\nOS Version:\t" + Environment.OSVersion.VersionString +
                        "\nReport {appName} bugs and above information to the bug tracker at\n" +
@@ -65,7 +64,7 @@ namespace PCRNetworkServer
             try
             {
                 string ui = "cli", password = "", device = null;
-                var security = true;
+                var security = false;
                 var port = 4456;
 
                 OptionSet.Add("h|help", "Displays this help.", s => ShowHelp());

@@ -80,6 +80,10 @@
     <None Include="App.config" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\PCR1000.Network\PCR1000.Network.csproj">
+      <Project>{c4792356-055e-4181-9ece-ec75fb04fda0}</Project>
+      <Name>PCR1000.Network</Name>
+    </ProjectReference>
     <ProjectReference Include="..\PCR1000\PCR1000.csproj">
       <Project>{29487920-2926-48b7-bd8c-b2761696663b}</Project>
       <Name>PCR1000</Name>

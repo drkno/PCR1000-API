@@ -1,7 +1,7 @@
 ﻿/*
  * PcrComm
  * Serial communication component of the PCR1000 Library
- * 
+ *
  * Copyright Matthew Knox © 2013-Present.
  * This program is distributed with no warentee or garentee
  * what so ever. Do what you want with it as long as attribution
@@ -78,7 +78,7 @@ namespace PCR1000
         /// <param name="baud">Baud rate to use. Defaults to 9600.</param>
         public PcrSerialComm(string port = null, int baud = 9600)
         {
-            Debug.WriteLine("PcrComm Being Created");
+            Debug.WriteLine($"PcrComm Being Created port={port} baud={baud}");
             var portNames = SerialPort.GetPortNames();
             if (string.IsNullOrWhiteSpace(port))
             {
@@ -93,7 +93,7 @@ namespace PCR1000
             if (!portNames.Contains(port))
             {
                 Debug.WriteLine("PcrComm Error: the serial port provided does not exist.");
-                throw new ArgumentException("Serial port provided does not exist.", nameof(port));
+                throw new ArgumentException("The serial port provided does not exist.", nameof(port));
             }
 
             _serialPort =  IsRunningOnMono()
@@ -102,7 +102,7 @@ namespace PCR1000
             _serialPort.DataReceived += SerialPortDataReceived;
             _serialPort.DtrEnable = true;
             _serialPort.Handshake = Handshake.RequestToSend;
-            Debug.WriteLine("PcrComm Created");
+            Debug.WriteLine("PcrComm Successfully Created");
         }
 
         /// <summary>
@@ -139,7 +139,7 @@ namespace PCR1000
         private void SerialPortDataReceived(object sender, SerialDataReceivedEventArgs e)
         {
 #if DEBUG
-            Debug.WriteLineIf(!_debugLogger, "PcrComm Data Recv");
+            Debug.WriteLineIf(!_debugLogger, "PcrComm Data Received");
 #endif
             try
             {
@@ -167,9 +167,9 @@ namespace PCR1000
                 Debug.WriteLineIf(_debugLogger, _serialPort.PortName + ": RECV -> " + str);
 #endif
             }
-            catch (Exception)
+            catch (Exception ex)
             {
-                Debug.WriteLine("RECV:ERR");
+                Debug.WriteLine("PcrComm Data Receive Error:\n" + ex.Message + "\n" + ex.StackTrace);
             }
         }
 
@@ -181,7 +181,7 @@ namespace PCR1000
         public bool Send(string cmd)
         {
 #if DEBUG
-            Debug.WriteLineIf(!_debugLogger, "PcrComm Data Send");
+            Debug.WriteLineIf(!_debugLogger, "PcrComm Sending Data");
             Debug.WriteLineIf(_debugLogger, _serialPort.PortName + ": SEND -> " + cmd);
 #endif
             try
@@ -200,8 +200,9 @@ namespace PCR1000
                 _serialPort.Write(cmd);
                 return true;
             }
-            catch (Exception)
+            catch (Exception e)
             {
+                Debug.WriteLine("PcrComm Failed to Send Date:\n" + e.Message + "\n" + e.StackTrace);
                 return false;
             }
         }

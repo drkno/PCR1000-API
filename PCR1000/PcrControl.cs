@@ -20,7 +20,6 @@
 using System;
 using System.Diagnostics;
 using System.Globalization;
-using PCR1000.Annotations;
 
 #endregion
 
@@ -37,11 +36,6 @@ namespace PCR1000
         private IComm _pcrComm;
 
         /// <summary>
-        ///     Was there an error reading from the PComm object?
-        /// </summary>
-        [UsedImplicitly] private bool _pcrErrRead;
-
-        /// <summary>
         ///     Currently active radio data.
         /// </summary>
         private PRadInf _pcrRadio;
@@ -55,6 +49,7 @@ namespace PCR1000
         /// Instantiates a new PCR1000 controller
         /// </summary>
         /// <param name="communicationChannel">Channel to use to communicate with the radio.</param>
+        /// <exception cref="UnauthorizedAccessException">If the communication channel cannot be opened.</exception>
         public PcrControl(IComm communicationChannel)
         {
             _pcrRadio = new PRadInf();
@@ -71,6 +66,10 @@ namespace PCR1000
             _pcrRadio.PcrRfAttenuator = false;
             _pcrRadio.PcrAutoUpdate = false;
             _pcrStatus = false;
+            if (!_pcrComm.PcrOpen())
+            {
+                throw new UnauthorizedAccessException("Access was not granted to the communication channel.");
+            }
         }
 
         /// <summary>
@@ -92,15 +91,12 @@ namespace PCR1000
 
             if (response == PcrDef.PCRAOK || response == PcrDef.PCRBOK)
             {
-                _pcrErrRead = false;
                 return true;
             }
             if (response == PcrDef.PCRABAD)
             {
-                _pcrErrRead = false;
                 return false;
             }
-            _pcrErrRead = true;
             return false;
         }
 
@@ -661,21 +657,20 @@ namespace PCR1000
         }
 
         /// <summary>
-        ///     Set the port for the current session.
-        ///     Sets port by closing the filedes and reopening it
-        ///     on the new port.
+        ///     Set the communication port for the current session.
+        ///     Sets port by closing the handle to the current one and opening the new one.
         /// </summary>
-        /// <param name="port">The port</param>
+        /// <param name="communicationPort">The port</param>
         /// <returns>
         /// True or false if the serial device can be opened on the new port.
         /// </returns>
-        public bool PcrSetPort(string port)
+        public bool PcrSetPort(IComm communicationPort)
         {
             Debug.WriteLine("PcrControl PcrSetPort");
             _pcrComm.PcrClose();
             try
             {
-                _pcrComm = new PcrSerialComm(port);
+                _pcrComm = communicationPort;
                 _pcrComm.PcrOpen();
                 _pcrComm.AutoUpdate = _pcrRadio.PcrAutoUpdate;
                 return true;

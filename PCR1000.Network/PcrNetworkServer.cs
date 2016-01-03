@@ -28,7 +28,7 @@ namespace PCR1000.Network
 
         private TcpClient _tcpClient;
 
-        private readonly bool _ssl;
+        private readonly bool _tls;
         private readonly string _password;
         private bool _isAuthenticated;
 
@@ -37,12 +37,12 @@ namespace PCR1000.Network
         /// </summary>
         /// <param name="pcrComm">Method of communication to use to connect to the radio.</param>
         /// <param name="netport">Network port to communucate on. Defaults to 4456.</param>
-        /// <param name="ssl">Use SSL to secure connections. This MUST be symmetric.</param>
+        /// <param name="tls">Use TLS to secure connections. This MUST be symmetric.</param>
         /// <param name="password">Password to use. Defaults to none.</param>
-        public PcrNetworkServer(IComm pcrComm, int netport = 4456, bool ssl = false, string password = "")
+        public PcrNetworkServer(IComm pcrComm, int netport = 4456, bool tls = false, string password = "")
         {
-            Debug.WriteLine($"PcrNetwork Being Created: port={netport} ssl={ssl} password=\"{password}\"");
-            _ssl = ssl;
+            Debug.WriteLine($"PcrNetwork Being Created: port={netport} tls={tls} password=\"{password}\"");
+            _tls = tls;
             _password = password;
             if (string.IsNullOrEmpty(_password)) _isAuthenticated = true;
             _port = netport;
@@ -97,8 +97,7 @@ namespace PCR1000.Network
         {
             Debug.WriteLine("Network: Client Connected");
             _tcpClient = (TcpClient)obj;
-            var clientStream = _ssl ? (Stream)new SslStream(_tcpClient.GetStream()) : _tcpClient.GetStream();
-
+            var clientStream = _tls ? (Stream) new SslStream(_tcpClient.GetStream()) : _tcpClient.GetStream();
             while (true)
             {
                 try
@@ -144,6 +143,12 @@ namespace PCR1000.Network
                 }
                 catch (Exception e)
                 {
+                    // client connected to a tls server without a tls stream
+                    if (e is InvalidOperationException && e.Message.Contains("authenticated") && clientStream is SslStream)
+                    {
+                        Debug.WriteLine("Client connected to TLS server without TLS stream. Disconnecting...");
+                        return;
+                    }
                     Debug.WriteLine("Client disconnect with exception: " + e.Message + "\n" + e.StackTrace);
                     break;
                 }
@@ -190,9 +195,9 @@ namespace PCR1000.Network
                 Debug.WriteLineIf(_debugLogger, "RECV -> " + data);
 #endif
             }
-            catch (Exception)
+            catch (Exception e)
             {
-                Debug.WriteLine("RECV:ERR");
+                Debug.WriteLine("RECV:ERR " + e.Message + "\n" + e.StackTrace);
             }
         }
 

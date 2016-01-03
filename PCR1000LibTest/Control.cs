@@ -6,6 +6,7 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using PCR1000;
+using PCR1000.Network;
 
 namespace PCR1000LibTest
 {
@@ -16,7 +17,7 @@ namespace PCR1000LibTest
             InitializeComponent();
         }
 
-        readonly PcrControl _pcrControl = new PcrControl(new PcrSerialComm());
+        readonly PcrControl _pcrControl = new PcrControl(new PcrNetworkClient("192.168.1.9"));
 
         private void button1_Click(object sender, EventArgs e)
         {

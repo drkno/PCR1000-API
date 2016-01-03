@@ -86,25 +86,29 @@ namespace PCR1000.Network
                     datarecv = datarecv.Substring(0, lData);
                     datarecv = datarecv.Trim(TrimChars);
                     if (datarecv.Length <= 0) continue;
-                    #if DEBUG
+#if DEBUG
                     Debug.WriteLineIf(!_debugLogger, "PcrNetwork Data Recv");
-                    #endif
-                    if (AutoUpdate && DataReceived != null)
+#endif
+                    if (AutoUpdate)
                     {
-                        DataReceived(this, DateTime.Now, datarecv);
+                        DataReceived?.Invoke(this, DateTime.Now, datarecv);
                     }
 
                     _msgSlot2 = _msgSlot1;
-                    _msgSlot1 = new RecvMsg { Message = datarecv, Time = DateTime.Now };
+                    _msgSlot1 = new RecvMsg {Message = datarecv, Time = DateTime.Now};
 
-                    #if DEBUG
+#if DEBUG
                     Debug.WriteLineIf(_debugLogger, _server + ":" + _port + " : RECV -> " + datarecv);
-                    #endif
+#endif
                 }
             }
             catch (ThreadAbortException)
             {
                 Debug.WriteLine("Listen thread aborting...");
+            }
+            catch (IOException e)
+            {
+                Debug.WriteLine("A socket read failure occurred:\n" + e.Message + "\r\n" + e.StackTrace);
             }
         }
 
