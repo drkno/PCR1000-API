@@ -115,22 +115,6 @@ namespace PCR1000
             return _serialPort;
         }
 
-#if DEBUG
-        /// <summary>
-        /// Keeps track of wheather debug logging is enabled.
-        /// </summary>
-        private bool _debugLogger;
-
-        /// <summary>
-        /// Enables or disables debug logging in the comminication library.
-        /// </summary>
-        /// <param name="debug">Enable or disable.</param>
-        public void SetDebugLogger(bool debug)
-        {
-            Debug.WriteLine("PcrComm Debug Logging: " + debug);
-            _debugLogger = debug;
-        }
-#endif
         /// <summary>
         /// Method called when data is received from the serial port.
         /// </summary>
@@ -138,9 +122,6 @@ namespace PCR1000
         /// <param name="e">Event arguments.</param>
         private void SerialPortDataReceived(object sender, SerialDataReceivedEventArgs e)
         {
-#if DEBUG
-            Debug.WriteLineIf(!_debugLogger, "PcrComm Data Received");
-#endif
             try
             {
                 var recvBuff = new byte[_serialPort.ReadBufferSize];
@@ -153,19 +134,15 @@ namespace PCR1000
                 {
                     DataReceived(this, DateTime.Now, str);
                 }
-#if DEBUG
                 else
                 {
-                    Debug.WriteLineIf(_debugLogger, "Warning: DataReceived is null.");
+                    Debug.WriteLine("Warning: DataReceived is null.");
                 }
-#endif
 
                 _msgSlot2 = _msgSlot1;
                 _msgSlot1 = new RecvMsg { Message = str, Time = DateTime.Now };
 
-#if DEBUG
-                Debug.WriteLineIf(_debugLogger, _serialPort.PortName + ": RECV -> " + str);
-#endif
+                Debug.WriteLine(_serialPort.PortName + ": RECV -> " + str);
             }
             catch (Exception ex)
             {
@@ -180,10 +157,7 @@ namespace PCR1000
         /// <returns>If sending succeeded.</returns>
         public bool Send(string cmd)
         {
-#if DEBUG
-            Debug.WriteLineIf(!_debugLogger, "PcrComm Sending Data");
-            Debug.WriteLineIf(_debugLogger, _serialPort.PortName + ": SEND -> " + cmd);
-#endif
+            Debug.WriteLine(_serialPort.PortName + ": SEND -> " + cmd);
             try
             {
                 if (!_serialPort.IsOpen)

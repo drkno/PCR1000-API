@@ -42,8 +42,9 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="PcrNetworkComm.cs" />
-    <Compile Include="PcrNetworkProtocolHandler.cs" />
-    <Compile Include="PcrNetworkServer.cs" />
+    <Compile Include="Server\ClientErrorCodes.cs" />
+    <Compile Include="Server\ConnectedClient.cs" />
+    <Compile Include="Server\PcrNetworkServer.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>

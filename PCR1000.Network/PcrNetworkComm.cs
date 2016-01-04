@@ -18,6 +18,7 @@ using System.Net.Security;
 using System.Net.Sockets;
 using System.Text;
 using System.Threading;
+using PCR1000.Network.Server;
 
 namespace PCR1000.Network
 {
@@ -86,9 +87,6 @@ namespace PCR1000.Network
                     datarecv = datarecv.Substring(0, lData);
                     datarecv = datarecv.Trim(TrimChars);
                     if (datarecv.Length <= 0) continue;
-#if DEBUG
-                    Debug.WriteLineIf(!_debugLogger, "PcrNetwork Data Recv");
-#endif
                     if (AutoUpdate)
                     {
                         DataReceived?.Invoke(this, DateTime.Now, datarecv);
@@ -97,9 +95,7 @@ namespace PCR1000.Network
                     _msgSlot2 = _msgSlot1;
                     _msgSlot1 = new RecvMsg {Message = datarecv, Time = DateTime.Now};
 
-#if DEBUG
-                    Debug.WriteLineIf(_debugLogger, _server + ":" + _port + " : RECV -> " + datarecv);
-#endif
+                    Debug.WriteLine(_server + ":" + _port + " : RECV -> " + datarecv);
                 }
             }
             catch (ThreadAbortException)
@@ -138,6 +134,7 @@ namespace PCR1000.Network
         public void Dispose()
         {
             if (!_tcpClient.Connected) return;
+            PcrClose();
             _tcpListen.Abort();
             _tcpListen.Join();
             _tcpClient.Close();
@@ -159,22 +156,6 @@ namespace PCR1000.Network
         {
             return _tcpClient;
         }
-
-#if DEBUG
-        /// <summary>
-        /// Keeps track of wheather debug logging is enabled.
-        /// </summary>
-        private bool _debugLogger;
-
-        /// <summary>
-        /// Enables or disables debug logging in the comminication library.
-        /// </summary>
-        /// <param name="debug">Enable or disable.</param>
-        public void SetDebugLogger(bool debug)
-        {
-            _debugLogger = debug;
-        }
-#endif
 
         /// <summary>
         /// Sends a command to the radio.
@@ -275,12 +256,10 @@ namespace PCR1000.Network
                 _tcpStream = _ssl ? (Stream) new SslStream(_tcpClient.GetStream()) : _tcpClient.GetStream();
                 _tcpBuffer = new byte[_tcpClient.ReceiveBufferSize];
                 _listenActive = true;
-                _tcpListen = new Thread(ListenThread);
+                _tcpListen = new Thread(ListenThread) {IsBackground = true};
                 _tcpListen.Start();
-                if (!string.IsNullOrWhiteSpace(_password))
-                {
-                    Send("<pwd>" + _password + "</pwd>");
-                }
+                PerformClientHello();
+                PerformClientAuth();
                 return true;
             }
             catch (Exception ex)
@@ -302,7 +281,7 @@ namespace PCR1000.Network
                 {
                     return true;
                 }
-                Send("<disconnect>");
+                SendWait("$DISCONNECT");
                 _listenActive = false;
                 _tcpListen.Abort();
                 _tcpBuffer = null;
@@ -314,6 +293,31 @@ namespace PCR1000.Network
             {
                 Debug.WriteLine(ex.Message);
                 return false;
+            }
+        }
+
+        private void PerformClientHello()
+        {
+            const float clientProtocolVersion = 2.0f;
+
+            var response = SendWait($"$HELLO {clientProtocolVersion}");
+            if (!response.StartsWith("$" + ClientErrorCode.SUC_HELLO_PASSED))
+            {
+                throw new InvalidOperationException("Cannot connect to server correctly. " + response + ".");
+            }
+        }
+
+        private void PerformClientAuth()
+        {
+            if (string.IsNullOrEmpty(_password))
+            {
+                return;
+            }
+
+            var response = SendWait("$AUTH \"" + _password + "\"");
+            if (!response.StartsWith("$" + ClientErrorCode.SUC_AUTH_PASSED))
+            {
+                throw new InvalidOperationException("Cannot authenticate with server correctly. " + response + ".");
             }
         }
     }

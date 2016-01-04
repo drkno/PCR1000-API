@@ -3,7 +3,7 @@ using System.Drawing;
 using System.IO.Ports;
 using System.Windows.Forms;
 using PCR1000;
-using PCR1000.Network;
+using PCR1000.Network.Server;
 
 namespace PCRNetworkServer
 {
@@ -88,9 +88,6 @@ namespace PCRNetworkServer
                         _pcrNetworkServer = checkBoxUseSecurity.Checked ? 
                             new PcrNetworkServer(comm, port, checkBoxSsl.Checked, textBoxPassword.Text) : 
                             new PcrNetworkServer(comm, port);
-                        #if DEBUG
-                        _pcrNetworkServer.SetDebugLogger(true);
-                        #endif
 
                         if (!_pcrNetworkServer.Start())
                         {

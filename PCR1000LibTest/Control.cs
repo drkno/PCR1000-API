@@ -21,9 +21,6 @@ namespace PCR1000LibTest
 
         private void button1_Click(object sender, EventArgs e)
         {
-#if DEBUG
-            _pcrControl.SetComDebugLogging(true);
-#endif
             Console.WriteLine(_pcrControl.PcrPowerUp());
             Console.WriteLine(_pcrControl.PcrIsOn());
             _pcrControl.PcrSetSquelch(0);
@@ -41,6 +38,7 @@ namespace PCR1000LibTest
         private void Form1_FormClosing(object sender, FormClosingEventArgs e)
         {
             _pcrControl.PcrPowerDown();
+            _pcrControl.Dispose();
         }
     }
 }

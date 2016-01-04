@@ -28,7 +28,7 @@ namespace PCR1000
     /// <summary>
     ///     Control class for the PCR1000
     /// </summary>
-    public class PcrControl
+    public class PcrControl : IDisposable
     {
         /// <summary>
         ///     The currently active Primitive Communication Object.
@@ -79,8 +79,7 @@ namespace PCR1000
         /// <param name="response">The response to check.</param>
         /// <param name="overrideAutoupdate">Trys to verify response during autoupdate mode.</param>
         /// <returns>
-        ///     true - for PCRAOK, false - for PCRABAD, false -
-        ///     and sets ErrRead to true if garbage was read.
+        ///     true - for PCRAOK, false - for PCRABAD.
         ///     If autoupdate mode is enabled will return true
         ///     without overrideAutoupdate enabled.
         /// </returns>
@@ -1085,35 +1084,12 @@ namespace PCR1000
             public int PcrVolume;
         }
 
-#if DEBUG
         /// <summary>
-        /// Writes Raw COM Port IO to the Console
+        /// Tidies up and releases the underlying radio from the control of this class.
         /// </summary>
-        /// <param name="log">Enable/Disable</param>
-        public void SetComDebugLogging(bool log)
+        public void Dispose()
         {
-            Debug.WriteLine("PcrControl SetComDebugLogging");
-            _pcrComm.SetDebugLogger(log);
+            _pcrComm.Dispose();
         }
-
-        /// <summary>
-        /// Sends a raw string to the port
-        /// </summary>
-        /// <param name="raw">The raw string to send</param>
-        public void DebugRawSend(string raw)
-        {
-            _pcrComm.Send(raw);
-        }
-
-        /// <summary>
-        /// Sends a raw string to the socket and waits for a response
-        /// </summary>
-        /// <param name="raw">The raw string to send</param>
-        /// <returns>The port response</returns>
-        public string DebugRawSendWait(string raw)
-        {
-            return _pcrComm.SendWait(raw);
-        }
-#endif
     }
 }

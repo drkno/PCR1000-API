@@ -1,13 +1,12 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Diagnostics;
-using System.IO;
 using System.Net;
-using System.Net.Security;
 using System.Net.Sockets;
 using System.Text;
 using System.Threading;
 
-namespace PCR1000.Network
+namespace PCR1000.Network.Server
 {
     /// <summary>
     /// Server class to manage remote connections.
@@ -23,14 +22,12 @@ namespace PCR1000.Network
         /// The serial port of the PCR1000.
         /// </summary>
         private readonly IComm _portComm;
-
+        
         private TcpListener _tcpListener;
-
-        private TcpClient _tcpClient;
-
+        private readonly List<ConnectedClient> _clients;
+        private long _clientCounter, _activeClient;
         private readonly bool _tls;
         private readonly string _password;
-        private bool _isAuthenticated;
 
         /// <summary>
         /// Instantiate a new PcrNetwork object to communicate with the PCR1000.
@@ -44,7 +41,7 @@ namespace PCR1000.Network
             Debug.WriteLine($"PcrNetwork Being Created: port={netport} tls={tls} password=\"{password}\"");
             _tls = tls;
             _password = password;
-            if (string.IsNullOrEmpty(_password)) _isAuthenticated = true;
+            _clients = new List<ConnectedClient>();
             _port = netport;
             _portComm = pcrComm;
             pcrComm.DataReceived += PcrCommOnDataReceived;
@@ -64,9 +61,20 @@ namespace PCR1000.Network
 
                 while (_listenContinue)
                 {
-                    var client = _tcpListener.AcceptTcpClient();
-                    var clientThread = new Thread(ListenForCommands);
-                    clientThread.Start(client);
+                    var tcpClient = _tcpListener.AcceptTcpClient();
+                    var cc = _clientCounter++;
+                    Func<string, bool> send = cmd => Send(cc, cmd);
+                    Func<bool, bool> takeControl = b =>
+                    {
+                        if (b) _activeClient = cc;
+                        return _activeClient == cc;
+                    };
+                    var client = new ConnectedClient(send, takeControl, tcpClient, _tls, _password);
+                    _clients.Add(client);
+                    client.OnDisconnect += s => _clients.Remove(client);
+                    _activeClient = cc;
+                    var clientThread = new Thread(client.Listen) {IsBackground = true};
+                    clientThread.Start(clientThread);
                 }
             }
             catch (Exception ex)
@@ -82,97 +90,11 @@ namespace PCR1000.Network
             }
         }
 
-        private void Send(string cmd)
+        private bool Send(long client, string cmd)
         {
-            Debug.WriteLine("IComm: Send -> " + cmd);
-            var stream = _tcpClient.GetStream();
-            stream.Write(Encoding.ASCII.GetBytes(cmd), 0, cmd.Length);
+            return _activeClient == client && _portComm.Send(cmd);
         }
 
-        /// <summary>
-        /// Listens for commands from a TcpClient.
-        /// </summary>
-        /// <param name="obj">The TcpClient</param>
-        private void ListenForCommands(object obj)
-        {
-            Debug.WriteLine("Network: Client Connected");
-            _tcpClient = (TcpClient)obj;
-            var clientStream = _tls ? (Stream) new SslStream(_tcpClient.GetStream()) : _tcpClient.GetStream();
-            while (true)
-            {
-                try
-                {
-                    var message = new byte[_tcpClient.ReceiveBufferSize];
-                    var bytesRead = clientStream.Read(message, 0, _tcpClient.ReceiveBufferSize);
-                    if (bytesRead == 0)
-                    {
-                        break;
-                    }
-
-                    var cmd = Encoding.ASCII.GetString(message, 0, bytesRead);
-
-                    if (!_isAuthenticated)
-                    {
-                        if (cmd.StartsWith("<pwd>") && cmd.EndsWith("</pwd>"))
-                        {
-                            cmd = cmd.Substring(5, cmd.Length - 11);
-                            if (cmd == _password)
-                            {
-                                _isAuthenticated = true;
-                                Send("<auth>pass</auth>");
-                                Debug.WriteLine("Network: RECV -> [PASS AUTH]");
-                            }
-                            else
-                            {
-                                Send("<auth>fail</auth>");
-                                Stop();
-                                Debug.WriteLine("Network: RECV -> [INVALID AUTH]");
-                            }
-                        }
-                        else
-                        {
-                            Debug.WriteLine("Network: RECV -> [REQUIRED AUTH]");
-                            Send("<auth>required</auth>");
-                        }
-                    }
-                    else
-                    {
-                        Debug.WriteLine("Network: RECV -> " + cmd);
-                        _portComm.Send(cmd);
-                    }
-                }
-                catch (Exception e)
-                {
-                    // client connected to a tls server without a tls stream
-                    if (e is InvalidOperationException && e.Message.Contains("authenticated") && clientStream is SslStream)
-                    {
-                        Debug.WriteLine("Client connected to TLS server without TLS stream. Disconnecting...");
-                        return;
-                    }
-                    Debug.WriteLine("Client disconnect with exception: " + e.Message + "\n" + e.StackTrace);
-                    break;
-                }
-            }
-
-            _tcpClient.Close();
-        }
-
-#if DEBUG
-        /// <summary>
-        /// Keeps track of wheather debug logging is enabled.
-        /// </summary>
-        private bool _debugLogger;
-
-        /// <summary>
-        /// Enables or disables debug logging in the comminication library.
-        /// </summary>
-        /// <param name="debug">Enable or disable.</param>
-        public void SetDebugLogger(bool debug)
-        {
-            Debug.WriteLine("PcrNetwork Debug Logging: " + debug);
-            _debugLogger = debug;
-        }
-#endif
         /// <summary>
         /// Method called when data is received from the communication port.
         /// </summary>
@@ -181,23 +103,20 @@ namespace PCR1000.Network
         /// <param name="data">Data received.</param>
         private void PcrCommOnDataReceived(IComm sender, DateTime recvTime, string data)
         {
-#if DEBUG
-            Debug.WriteLineIf(!_debugLogger, "PCR::NETS->OnDataReceived");
-#endif
+            ConnectedClient last = null;
             try
             {
-                if (_tcpClient != null)
+                var bytes = Encoding.ASCII.GetBytes(data);
+                foreach (var client in _clients)
                 {
-                    var stream = _tcpClient.GetStream();
-                    stream.Write(Encoding.ASCII.GetBytes(data), 0, data.Length);
+                    last = client;
+                    client.Send(bytes);
                 }
-#if DEBUG
-                Debug.WriteLineIf(_debugLogger, "RECV -> " + data);
-#endif
             }
             catch (Exception e)
             {
-                Debug.WriteLine("RECV:ERR " + e.Message + "\n" + e.StackTrace);
+                Debug.WriteLine("RECV:ERR The client probably disconnected prematurely.\n" + e.Message + "\n" + e.StackTrace);
+                last?.ForceDisconnect();
             }
         }
 

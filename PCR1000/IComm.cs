@@ -49,14 +49,6 @@ namespace PCR1000
         /// <returns>The communications port object.</returns>
         object GetRawPort();
 
-#if DEBUG
-        /// <summary>
-        /// Enables or disables debug logging in the comminication library.
-        /// </summary>
-        /// <param name="debug">Enable or disable.</param>
-        void SetDebugLogger(bool debug);
-#endif
-
         /// <summary>
         /// Sends a messsage to the PCR1000.
         /// </summary>
