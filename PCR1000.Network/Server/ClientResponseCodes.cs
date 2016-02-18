@@ -1,7 +1,7 @@
 ﻿// ReSharper disable InconsistentNaming
 namespace PCR1000.Network.Server
 {
-    internal enum ClientErrorCode
+    internal enum ClientResponseCode
     {
         // Client Hello
         ERR_HELLO_NOTFOUND,
@@ -11,6 +11,7 @@ namespace PCR1000.Network.Server
         SUC_HELLO_PASSED,
 
         // Auth
+        INF_AUTH_REQUIRED,
         ERR_AUTH_NOTFOUND,
         ERR_AUTH_INVALID,
         ERR_AUTH_INCORRECT,

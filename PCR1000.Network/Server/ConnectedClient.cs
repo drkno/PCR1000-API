@@ -8,16 +8,15 @@ using System.Reflection;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
+using PCR1000.Network.Client;
 
 namespace PCR1000.Network.Server
 {
     internal sealed class ConnectedClient
     {
-        private const string ServerPrefix = "$";
+        internal const string ServerPrefix = "$";
         private const float ProtocolVersion = 2.0f;
-        
         public event Action<object> OnDisconnect;
-
         private readonly Func<string, bool> _sendFunc;
         private readonly Func<bool, bool> _hasControl; 
         private readonly TcpClient _tcpClient;
@@ -50,7 +49,7 @@ namespace PCR1000.Network.Server
             InternalSend(bytes);
         }
 
-        private void Send(ClientErrorCode code, string message)
+        private void Send(ClientResponseCode code, string message)
         {
             Debug.WriteLine($"Network Send: code={code} message=\"{message}\"");
             var cmd = ServerPrefix + code + " \"" + message + "\"";
@@ -63,7 +62,7 @@ namespace PCR1000.Network.Server
             _networkStream.Write(bytes, 0, bytes.Length);
         }
 
-        private void Disconnect(ClientErrorCode errorCode, string message)
+        private void Disconnect(ClientResponseCode errorCode, string message)
         {
             Send(errorCode, message);
             _shouldListen = false;
@@ -78,35 +77,35 @@ namespace PCR1000.Network.Server
 
             if (!cmd.StartsWith("$HELLO "))
             {
-                Disconnect(ClientErrorCode.ERR_HELLO_NOTFOUND, "Polite Clients Say Hello");
+                Disconnect(ClientResponseCode.ERR_HELLO_NOTFOUND, "Polite Clients Say Hello");
                 return;
             }
 
             var split = cmd.Split(' ');
             if (split.Length < helloFields)
             {
-                Disconnect(ClientErrorCode.ERR_HELLO_INVALID, "Unknown Client Hello");
+                Disconnect(ClientResponseCode.ERR_HELLO_INVALID, "Unknown Client Hello");
                 return;
             }
 
             if (split.Length > helloFields)
             {
-                Send(ClientErrorCode.WAR_HELLO_UNKNOWN, "Client Hello Contains Unknown Values");
+                Send(ClientResponseCode.WAR_HELLO_UNKNOWN, "Client Hello Contains Unknown Values");
             }
 
             float protoVersion;
             if (!float.TryParse(split[1], out protoVersion))
             {
-                Disconnect(ClientErrorCode.ERR_HELLO_INVALID, "Unknown Client Hello");
+                Disconnect(ClientResponseCode.ERR_HELLO_INVALID, "Unknown Client Hello");
                 return;
             }
 
             if (protoVersion < ProtocolVersion)
             {
-                Disconnect(ClientErrorCode.ERR_PROTOVER_TOOOLD, "Protocol Version of Client is Too Old");
+                Disconnect(ClientResponseCode.ERR_PROTOVER_TOOOLD, "Protocol Version of Client is Too Old");
                 return;
             }
-            Send(ClientErrorCode.SUC_HELLO_PASSED, "Client has connected to server.");
+            Send(_isAuthenticated ? ClientResponseCode.SUC_HELLO_PASSED : ClientResponseCode.INF_AUTH_REQUIRED, "Client has connected to server.");
             _hasHelloed = true;
         }
 
@@ -114,7 +113,7 @@ namespace PCR1000.Network.Server
         {
             if (!cmd.StartsWith("$AUTH "))
             {
-                Send(ClientErrorCode.ERR_AUTH_NOTFOUND, "Authentication is required.");
+                Disconnect(ClientResponseCode.ERR_AUTH_NOTFOUND, "Authentication is required.");
                 return;
             }
 
@@ -122,17 +121,17 @@ namespace PCR1000.Network.Server
 
             if (!regex.Success)
             {
-                Disconnect(ClientErrorCode.ERR_AUTH_INVALID, "Unknown Client Authentication");
+                Disconnect(ClientResponseCode.ERR_AUTH_INVALID, "Unknown Client Authentication");
                 return;
             }
 
             if (regex.Value != _password)
             {
-                Disconnect(ClientErrorCode.ERR_AUTH_INCORRECT, "The provided authorisation was incorrect.");
+                Disconnect(ClientResponseCode.ERR_AUTH_INCORRECT, "The provided authorisation was incorrect.");
                 return;
             }
 
-            Send(ClientErrorCode.SUC_AUTH_PASSED, "Client has authenticated with server.");
+            Send(ClientResponseCode.SUC_AUTH_PASSED, "Client has authenticated with server.");
             _isAuthenticated = true;
         }
 
@@ -150,26 +149,29 @@ namespace PCR1000.Network.Server
                 return;
             }
 
-            switch (cmd?.Trim())
+            cmd = string.IsNullOrEmpty(cmd) ? cmd : cmd.Substring(ServerPrefix.Length).Trim();
+            ClientRequestCode code;
+            Enum.TryParse(cmd, out code);
+            switch (code)
             {
-                case "$ECHO":
-                    Send(ClientErrorCode.SUC_ECHO_RESPONSE, "Reply name=\"" + Assembly.GetEntryAssembly().FullName + "\" proto=\"" + ProtocolVersion + "\"");
+                case ClientRequestCode.ECHO:
+                    Send(ClientResponseCode.SUC_ECHO_RESPONSE, "Reply name=\"" + Assembly.GetEntryAssembly().FullName + "\" proto=\"" + ProtocolVersion + "\"");
                     break;
 
-                case "$HASCONTROL":
-                    Send(ClientErrorCode.SUC_HASCONTROL_RESPONSE, _hasControl(false) ? "Yes" : "No");
+                case ClientRequestCode.HASCONTROL:
+                    Send(ClientResponseCode.SUC_HASCONTROL_RESPONSE, _hasControl(false) ? "Yes" : "No");
                     break;
 
-                case "$TAKECONTROL":
-                    Send(ClientErrorCode.SUC_TAKECONTROL_RESPONSE, _hasControl(true) ? "Yes" : "No");
+                case ClientRequestCode.TAKECONTROL:
+                    Send(ClientResponseCode.SUC_TAKECONTROL_RESPONSE, _hasControl(true) ? "Yes" : "No");
                     break;
 
-                case "$DISCONNECT":
-                   // Disconnect(ClientErrorCode.INF_CLIENT_DISCONNECT, "Client initiated disconnect.");
+                case ClientRequestCode.DISCONNECT:
+                   // Disconnect(ClientResponseCode.INF_CLIENT_DISCONNECT, "Client initiated disconnect.");
                     break;
 
                 default:
-                    Send(ClientErrorCode.WAR_COMMAND_UNKNOWN, "The command \"" + cmd + "\" is unknown.");
+                    Send(ClientResponseCode.WAR_COMMAND_UNKNOWN, "The command \"" + cmd + "\" is unknown.");
                     break;
             }
         }
@@ -205,12 +207,12 @@ namespace PCR1000.Network.Server
                     if (_hasControl(false))
                     {
                         Debug.WriteLine("Network: Query Failed: " + cmd);
-                        Send(ClientErrorCode.ERR_QUERY_FAILED, "The command provided failed.");
+                        Send(ClientResponseCode.ERR_QUERY_FAILED, "The command provided failed.");
                     }
                     else
                     {
                         Debug.WriteLine("Network: Another client has control.");
-                        Send(ClientErrorCode.ERR_HASCONTROL_RESPONSE, "No");
+                        Send(ClientResponseCode.ERR_HASCONTROL_RESPONSE, "No");
                     }
                 }
                 catch (Exception e)
@@ -228,7 +230,7 @@ namespace PCR1000.Network.Server
                 }
             }
             
-            Disconnect(ClientErrorCode.INF_CLIENT_DISCONNECT, "Client has initiated disconnect.");
+            Disconnect(ClientResponseCode.INF_CLIENT_DISCONNECT, "Client has initiated disconnect.");
         }
 
         /// <summary>

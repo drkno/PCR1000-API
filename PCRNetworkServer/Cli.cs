@@ -3,7 +3,6 @@ using System.Linq;
 using System.Net;
 using System.Net.Sockets;
 using PCR1000;
-using PCR1000.Network;
 using PCR1000.Network.Server;
 
 namespace PCRNetworkServer
@@ -48,7 +47,7 @@ namespace PCRNetworkServer
             Console.Title = title;
         }
 
-        public static string GetLocalIPAddress()
+        private static string GetLocalIPAddress()
         {
             var host = Dns.GetHostEntry(Dns.GetHostName());
             foreach (var ip in host.AddressList.Where(ip => ip.AddressFamily == AddressFamily.InterNetwork))

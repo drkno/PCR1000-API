@@ -41,8 +41,9 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="PcrNetworkComm.cs" />
-    <Compile Include="Server\ClientErrorCodes.cs" />
+    <Compile Include="Client\ClientRequestCode.cs" />
+    <Compile Include="Client\PcrNetworkComm.cs" />
+    <Compile Include="Server\ClientResponseCodes.cs" />
     <Compile Include="Server\ConnectedClient.cs" />
     <Compile Include="Server\PcrNetworkServer.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
@@ -53,6 +54,7 @@
       <Name>PCR1000</Name>
     </ProjectReference>
   </ItemGroup>
+  <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
        Other similar extension points exist, see Microsoft.Common.targets.

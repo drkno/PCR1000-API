@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using System.Windows.Forms;
 using PCR1000;
 using PCR1000.Network;
+using PCR1000.Network.Client;
 
 namespace PCR1000LibTest
 {

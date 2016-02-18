@@ -140,12 +140,12 @@ namespace PCRNetworkServer
                 else if (e is InvalidOperationException)
                 {
                     Console.Error.WriteLine("A fatal error occured while running " + name +
-                        ". " + e.Message);
+                        ".\n" + e.Message);
                 }
                 else
                 {
                     Console.Error.WriteLine("A fatal error occured while running " + name +
-                        ". One of your options was probably malformed. ");
+                        ".\nOne of your options was probably malformed.");
 #if DEBUG
                     Console.Error.WriteLine(e.StackTrace);
 #endif

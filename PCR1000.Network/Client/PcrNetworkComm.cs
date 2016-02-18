@@ -20,7 +20,7 @@ using System.Text;
 using System.Threading;
 using PCR1000.Network.Server;
 
-namespace PCR1000.Network
+namespace PCR1000.Network.Client
 {
     /// <summary>
     /// Client to connect to a remote radio.
@@ -38,7 +38,7 @@ namespace PCR1000.Network
         // ReSharper restore ConvertToConstant.Local
         private readonly string _server;
         private readonly int _port;
-        private readonly bool _ssl;
+        private readonly bool _tls;
 
         /// <summary>
         /// Unnessercery characters potentially returned in each message.
@@ -113,10 +113,10 @@ namespace PCR1000.Network
         /// </summary>
         /// <param name="server">The server to connect to.</param>
         /// <param name="port">The port to connect to.</param>
-        /// <param name="ssl">Use SSL to secure connections. This MUST be symmetric.</param>
+        /// <param name="tls">Use TLS to secure connections. This MUST be symmetric.</param>
         /// <param name="password">The password to connect with.</param>
         /// <exception cref="ArgumentException">If invalid arguments are provided.</exception>
-        public PcrNetworkClient(string server, int port = 4456, bool ssl = false, string password = "")
+        public PcrNetworkClient(string server, int port = 4456, bool tls = false, string password = "")
         {
             if (string.IsNullOrWhiteSpace(server) || port <= 0)
             {
@@ -125,7 +125,7 @@ namespace PCR1000.Network
             _password = password;
             _server = server;
             _port = port;
-            _ssl = ssl;
+            _tls = tls;
         }
 
         /// <summary>
@@ -253,13 +253,16 @@ namespace PCR1000.Network
                     return true;
                 }
                 _tcpClient = new TcpClient(_server, _port);
-                _tcpStream = _ssl ? (Stream) new SslStream(_tcpClient.GetStream()) : _tcpClient.GetStream();
+                _tcpStream = _tls ? (Stream) new SslStream(_tcpClient.GetStream()) : _tcpClient.GetStream();
                 _tcpBuffer = new byte[_tcpClient.ReceiveBufferSize];
                 _listenActive = true;
                 _tcpListen = new Thread(ListenThread) {IsBackground = true};
                 _tcpListen.Start();
-                PerformClientHello();
-                PerformClientAuth();
+                var code = PerformClientHello();
+                if (code == ClientResponseCode.INF_AUTH_REQUIRED)
+                {
+                    PerformClientAuth();
+                }
                 return true;
             }
             catch (Exception ex)
@@ -281,7 +284,7 @@ namespace PCR1000.Network
                 {
                     return true;
                 }
-                SendWait("$DISCONNECT");
+                SendWait(ConnectedClient.ServerPrefix + "DISCONNECT");
                 _listenActive = false;
                 _tcpListen.Abort();
                 _tcpBuffer = null;
@@ -296,29 +299,55 @@ namespace PCR1000.Network
             }
         }
 
-        private void PerformClientHello()
+        private ClientResponseCode PerformClientHello()
         {
             const float clientProtocolVersion = 2.0f;
 
-            var response = SendWait($"$HELLO {clientProtocolVersion}");
-            if (!response.StartsWith("$" + ClientErrorCode.SUC_HELLO_PASSED))
+            var response = SendWait($"{ConnectedClient.ServerPrefix}HELLO {clientProtocolVersion}");
+            var code = ParseClientCode(response);
+            if (code != ClientResponseCode.SUC_HELLO_PASSED && code != ClientResponseCode.INF_AUTH_REQUIRED)
             {
                 throw new InvalidOperationException("Cannot connect to server correctly. " + response + ".");
             }
+            return code;
         }
 
         private void PerformClientAuth()
         {
-            if (string.IsNullOrEmpty(_password))
-            {
-                return;
-            }
-
-            var response = SendWait("$AUTH \"" + _password + "\"");
-            if (!response.StartsWith("$" + ClientErrorCode.SUC_AUTH_PASSED))
+            var response = SendWait(ConnectedClient.ServerPrefix + "AUTH \"" + _password + "\"");
+            if (!response.StartsWith(ConnectedClient.ServerPrefix) || !response.Contains(" "))
+            if (!response.StartsWith(ConnectedClient.ServerPrefix + ClientResponseCode.SUC_AUTH_PASSED))
             {
                 throw new InvalidOperationException("Cannot authenticate with server correctly. " + response + ".");
             }
+        }
+
+        private ClientResponseCode ParseClientCode(string input)
+        {
+            if (string.IsNullOrEmpty(input) || !input.Contains(" ") || !input.StartsWith(ConnectedClient.ServerPrefix))
+            {
+                throw new InvalidOperationException("Invalid response received from server.");
+            }
+
+            input = input.Substring(1, input.IndexOf(" ", StringComparison.Ordinal) - 1);
+            ClientResponseCode code;
+            if (!Enum.TryParse(input, out code))
+            {
+                throw new InvalidOperationException("Invalid response received from server.");
+            }
+            return code;
+        }
+
+        public bool HasControl()
+        {
+            var response = SendWait(ConnectedClient.ServerPrefix + ClientRequestCode.HASCONTROL)?.Trim();
+            var respYes = ConnectedClient.ServerPrefix + ClientResponseCode.SUC_HASCONTROL_RESPONSE + "\"Yes\"";
+            return response == respYes;
+        }
+
+        public void TakeControl()
+        {
+            Send(ConnectedClient.ServerPrefix + ClientRequestCode.TAKECONTROL);
         }
     }
 }
